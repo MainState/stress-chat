@@ -13,3 +13,7 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "/nix/store/rbg00q7j8bflgr0vqq1557m45lzljfav-python3-wrapper/bin/python3 main.py"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
