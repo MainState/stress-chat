@@ -1,3 +1,4 @@
+modules = ["python-3.11"]
 [nix]
 channel = "stable-24_05"
 
@@ -11,4 +12,4 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python3 main.py"
+args = "/nix/store/rbg00q7j8bflgr0vqq1557m45lzljfav-python3-wrapper/bin/python3 main.py"
