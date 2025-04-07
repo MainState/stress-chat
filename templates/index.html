@@ -3,22 +3,16 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Flask App</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-        }
-        h1 {
-            font-size: 48px;
-        }
-    </style>
+    <title>채팅 애플리케이션</title>
 </head>
 <body>
-    <h1>Hello World</h1>
+    <div id="chat-box"></div>
+    
+    <div>
+        <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
+        <button id="send-button">전송</button>
+    </div>
+    
+    <div id="score-display"></div>
 </body>
 </html>
