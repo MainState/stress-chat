@@ -14,5 +14,45 @@
     </div>
     
     <div id="score-display"></div>
+    
+    <script>
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const chatBox = document.getElementById('chat-box');
+
+        sendButton.addEventListener('click', async () => {
+            const userMessage = userInput.value.trim();
+            
+            if (userMessage) {
+                // 사용자 메시지 표시
+                chatBox.innerHTML += `<p>나: ${userMessage}</p>`;
+                userInput.value = '';
+
+                try {
+                    // 서버에 메시지 전송
+                    const response = await fetch('/send_message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message: userMessage })
+                    });
+
+                    const data = await response.json();
+                    // 챗봇 응답 표시
+                    chatBox.innerHTML += `<p>챗봇: ${data.reply}</p>`;
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+        });
+
+        // Enter 키 입력 처리
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+    </script>
 </body>
 </html>
