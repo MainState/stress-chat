@@ -1,0 +1,35 @@
+# 내 Flask 앱 파일(`main.py` 또는 `app.py`) 안에 있는 `handle_message` 함수 내부를 수정해줘.
+# 이 함수는 이미 사용자 메시지(user_message)를 받고, 세션에서 메시지 기록(user_messages_history)을 관리하며,
+# 마지막에는 `calculate_stress_score` 함수를 호출해서 점수(stress_score)를 얻고,
+# `jsonify({'reply': bot_reply, 'stress_score': stress_score})` 형태로 응답을 반환하는 구조를 가지고 있다고 가정해.
+# 그리고 파일 상단에는 `OpenAI` 클라이언트가 `client`라는 변수로 초기화되어 있고, `openai_enabled`라는 플래그 변수가 설정되어 있다고 가정해.
+
+# 수정할 내용:
+# 함수 내에서 임시(더미) 챗봇 응답을 설정하는 부분 (예: `bot_reply = "임시 응답"`)을 찾아서,
+# 아래 설명하는 실제 OpenAI API 호출 로직으로 **교체**해줘:
+
+# 1. 먼저, `openai_enabled` 플래그 변수가 `True`인지 확인하는 조건문을 추가해줘.
+
+# 2. `openai_enabled`가 `True`인 경우의 로직 (if 블록 내부):
+#    a. OpenAI API에 전달할 메시지 목록(`messages_for_api`) 리스트를 준비해줘. 최소한 다음 두 딕셔너리를 포함해야 해:
+#       - 시스템 역할 메시지: `{"role": "system", "content": "너는 사용자의 스트레스에 대해 묻는 친절하고 공감 능력이 뛰어난 챗봇이야."}`
+#       - 현재 사용자 메시지: `{"role": "user", "content": user_message}` (user_message 변수는 이미 사용 가능하다고 가정)
+#       * (참고: 나중에 대화 맥락 유지를 위해 세션의 이전 대화 기록(chat_history)을 이 리스트에 추가할 수 있음)
+#    b. API 호출 부분을 `try...except` 블록으로 감싸서 오류를 처리해줘.
+#    c. `try` 블록 안에서:
+#       i.  미리 초기화된 `client` 변수를 사용해서 `client.chat.completions.create()` 메서드를 호출해줘.
+#       ii. `model` 파라미터 값은 `"gpt-4o-mini"` 로 지정해줘.
+#       iii. `messages` 파라미터에는 위에서 만든 `messages_for_api` 리스트를 전달해줘.
+#       iv. API 호출 결과를 `chat_completion` 같은 변수에 저장해줘.
+#       v.  `chat_completion.choices[0].message.content` 를 통해 실제 AI 응답 텍스트를 추출해서 `bot_reply` 라는 변수에 저장해줘.
+#    d. `except Exception as e:` 블록 안에서:
+#       i.  오류 로그를 출력해줘 (예: `print(f"Error calling OpenAI API: {e}")`).
+#       ii. `bot_reply` 변수에 사용자에게 보여줄 오류 안내 메시지(예: "죄송합니다. AI 응답 생성 중 오류가 발생했습니다.")를 할당해줘.
+
+# 3. `openai_enabled`가 `False`인 경우의 로직 (else 블록 또는 if문 바깥의 기본값 설정):
+#    - `bot_reply` 변수에 "AI API가 준비되지 않았습니다. (임시 응답)" 같은 기본 메시지를 할당해줘.
+
+# **매우 중요:**
+# - 이 API 호출 및 `bot_reply` 설정 로직은 함수 내에서 `calculate_stress_score` 함수를 호출하기 **전**에 위치해야 해.
+# - 여기서 설정된 `bot_reply` 변수가 기존 코드의 최종 `return jsonify({'reply': bot_reply, 'stress_score': stress_score})` 부분에서 **그대로 사용**되어야 해.
+# - 기존의 **점수 계산 로직 호출 부분이나 최종 return 문을 삭제하면 안 돼.**
