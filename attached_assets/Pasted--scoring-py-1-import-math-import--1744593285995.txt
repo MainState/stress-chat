@@ -1,0 +1,43 @@
+# `scoring.py` 라는 새 파이썬 파일을 만들고 다음 내용을 작성해줘:
+
+# 1. 필요한 모듈 import:
+#    - `math` 모듈을 import 해줘.
+
+# 2. 키워드 및 가중치 딕셔너리 정의:
+#    - `KEYWORDS` 라는 이름의 전역 변수(딕셔너리)를 만들어줘.
+#    - 이 딕셔너리 안에는 다음 5개의 카테고리(키)를 포함하고, 각 카테고리(값)는 키워드(키)와 가중치(값)를 포함하는 또 다른 딕셔너리 형태여야 해. (이 목록은 예시이며 나중에 수정/확장될 수 있음):
+#      - "negative_emotion": {"짜증": 1, "힘들다": 1, "힘들어": 1, "불안": 2, "우울": 2, "화나": 1, "슬프다": 1, "슬퍼": 1, "죽겠다": 3, "미치겠다": 2, "걱정": 1.5}
+#      - "positive_emotion": {"괜찮아": -1, "좋아": -1, "재밌었어": -1, "재미있었어": -1, "행복": -2, "편안": -1, "기분전환": -1.5, "즐거웠어": -1.5, "다행이다": -1}
+#      - "sleep_issues": {"못잤어": 2, "잠설쳤어": 2, "졸려": 0.5, "잠 부족": 1.5, "불면증": 2.5}
+#      - "workload_issues": {"바빠": 1, "바쁘다": 1, "일많아": 1.5, "공부많아": 1.5, "야근": 1.5, "마감": 2, "시험": 2, "과제": 1, "벅차다": 1.5}
+#      - "physical_symptoms": {"두통": 1, "머리아파": 1, "소화안돼": 1, "소화 안돼": 1, "어깨결려": 0.5, "피곤": 1.5, "피곤해": 1.5, "몸살": 1.5}
+
+# 3. 스트레스 점수 계산 함수 정의:
+#    - `calculate_stress_score` 라는 이름의 함수를 정의해줘.
+#    - 이 함수는 `user_messages` (문자열들이 담긴 리스트)를 인자로 받아야 해.
+#    - 함수 상단에는 이 함수의 목적, 인자(`Args`), 반환값(`Returns`)을 설명하는 독스트링(docstring)을 작성해줘.
+#    - 함수 로직은 다음과 같아:
+#      a. 만약 `user_messages` 리스트가 비어있으면, "[Scoring] No user messages..." 라는 로그를 출력하고 기본 점수 5를 반환해줘.
+#      b. `raw_score` 변수를 0으로 초기화해줘.
+#      c. 디버깅/분석을 위해 발견된 키워드 상세 정보를 저장할 `found_keywords_details = []` 리스트를 만들어줘.
+#      d. 사용자 메시지 개수를 포함한 분석 시작 로그(예: "[Scoring] Start analyzing ... messages ---")를 출력해줘.
+#      e. `user_messages` 리스트의 각 `message`에 대해 (인덱스 `i`와 함께) 반복해줘.
+#      f. 각 메시지 분석 시작 시 "[Scoring] Analyzing msg {i+1}: '{message[:50]}...'" 로그를 출력해줘 (메시지가 길 수 있으니 앞 50자 정도만).
+#      g. 해당 메시지 내에서 중복 키워드 카운트를 방지하기 위해 `found_in_this_message = set()` 세트를 만들어줘.
+#      h. `KEYWORDS` 딕셔너리의 모든 `category`, 그리고 그 안의 `keyword`, `weight`에 대해 반복해줘.
+#      i. 만약 현재 `keyword`가 `message` 안에 포함되어 있고 (`in` 연산자 사용) `found_in_this_message` 세트에 없다면:
+#         i.  디버깅용으로 "  - Found: '{keyword}' (Cat: {category}, W: {weight})" 형식의 로그를 출력해줘.
+#         ii. `raw_score`에 해당 `weight`를 더해줘.
+#         iii. 해당 `keyword`를 `found_in_this_message` 세트에 추가해줘.
+#         iv. `found_keywords_details` 리스트에 {'kw': keyword, 'wt': weight, 'msg_idx': i} 딕셔너리를 추가해줘.
+#      j. 모든 메시지 처리가 끝나면, "[Scoring] Total Raw Score: {raw_score}" 로그와 "[Scoring] Found Keywords Details: {found_keywords_details}" 로그를 출력해줘.
+#      k. 점수 정규화: `normalized_score = round(raw_score + 5)` 로 계산하고, `final_score = max(1, min(10, normalized_score))` 로 1~10점 사이의 최종 점수(정수)를 계산해줘.
+#      l. "[Scoring] Normalized Score (1-10): {final_score}" 로그를 출력하고 줄바꿈 및 구분선을 추가해줘.
+#      m. 최종 `final_score`를 반환해줘.
+
+# 4. (선택 사항) 자체 테스트 코드 추가:
+#    - 파일의 맨 끝에 `if __name__ == '__main__':` 조건문을 추가해줘.
+#    - 이 조건문 안에서:
+#      a. "Running scoring module self-test..."를 출력해줘.
+#      b. 이전 답변에서 제공된 3개의 테스트 메시지 리스트(`test_messages_1`, `test_messages_2`, `test_messages_3`)를 정의해줘.
+#      c. 각 테스트 메시지 리스트로 `calculate_stress_score` 함수를 호출하고, 반환된 점수를 설명과 함께 출력해줘 (예: "Test Case 1 Score: {score1}").
