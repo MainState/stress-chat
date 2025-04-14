@@ -1,0 +1,45 @@
+# 내 Flask 앱 파일(`main.py` 또는 `app.py`)의 `handle_message` 함수를 수정해서, 챗봇 대화가 반복되거나 끝나지 않는 문제를 개선하려고 해. 다음 요구사항에 맞춰 코드를 수정해줘:
+
+# 가정:
+# - 파일 상단에 `from flask import session` 이 포함되어 있다고 가정.
+# - `app.secret_key`가 설정되어 있다고 가정.
+# - `handle_message` 함수 내에 사용자 메시지를 받는 코드, OpenAI 클라이언트(`client`) 및 `openai_enabled` 플래그, `calculate_stress_score` 함수 호출, 최종 `jsonify` 반환 코드가 이미 존재한다고 가정.
+
+# === 변경 요청 사항 ===
+
+# 1. **함수 시작 부분에 턴 카운터 로직 추가:**
+#    - 함수가 시작될 때, `session`에서 'turn_count' 값을 가져오고, 없으면 0으로 초기화해줘 (`session.get('turn_count', 0)`).
+#    - 이 `turn_count` 값을 1 증가시켜줘.
+#    - 증가된 값을 다시 `session['turn_count']`에 저장해줘.
+#    - 현재 턴 수를 확인하기 위해 `print(f"Current turn: {turn_count}")` 로그를 추가해줘.
+#    - `conversation_end` 라는 변수를 만들고 `False`로 초기화해줘.
+#    - 만약 `turn_count`가 15 이상이면 (`>= 15`), `conversation_end` 값을 `True`로 바꾸고 "Conversation turn limit reached." 라는 로그를 출력해줘.
+
+# 2. **API 호출 전 메시지 목록(History) 구성 로직 수정:**
+#    - OpenAI API를 호출하기 위해 `messages_for_api` 리스트를 만드는 부분을 다음과 같이 수정해줘:
+#      a. `session`에서 'chat_history' 리스트를 가져와줘 (없으면 빈 리스트). 이것은 `{'role': 'user', 'content': '...'}` 또는 `{'role': 'assistant', 'content': '...'}` 형태의 딕셔너리들을 담고 있다고 가정.
+#      b. `messages_for_api` 리스트를 생성하고, 첫 번째 요소로 시스템 프롬프트 딕셔너리를 추가해줘 (기존 시스템 프롬프트 내용 사용).
+#      c. `chat_history` 리스트의 **마지막 6개** 메시지(3턴 분량)를 `messages_for_api` 리스트에 이어서 추가해줘. (예: `history_limit = 6`, `messages_for_api.extend(chat_history[-history_limit:])`)
+#      d. 마지막으로, 현재 사용자의 메시지(`{"role": "user", "content": user_message}`)를 `messages_for_api` 리스트 맨 뒤에 추가해줘.
+
+# 3. **API 호출 성공 후 대화 기록(History) 저장 로직 추가:**
+#    - `client.chat.completions.create()` 호출이 성공하여 `bot_reply`를 얻은 직후 (`try` 블록 내부)에 다음 로직을 추가해줘:
+#      a. `session`에서 'chat_history' 리스트를 다시 가져와줘 (없으면 빈 리스트).
+#      b. 현재 사용자 메시지 (`{"role": "user", "content": user_message}`)를 `chat_history` 리스트에 추가해줘.
+#      c. AI 응답 (`{"role": "assistant", "content": bot_reply}`)을 `chat_history` 리스트에 추가해줘.
+#      d. 업데이트된 `chat_history` 리스트를 `session['chat_history']`에 다시 저장해줘.
+
+# 4. **점수 계산을 위한 사용자 메시지 기록 관리:**
+#    - 점수 계산 함수(`calculate_stress_score`)를 호출하기 **직전**에 다음 로직을 추가/수정해줘:
+#      a. `session`에서 'user_messages' 리스트(사용자 메시지 문자열만 담는 리스트)를 가져와줘 (없으면 빈 리스트).
+#      b. 현재 `user_message` (문자열)를 이 리스트에 추가해줘.
+#      c. 업데이트된 리스트를 `session['user_messages']`에 다시 저장해줘.
+#      d. `calculate_stress_score` 함수를 호출할 때는 이 업데이트된 `user_messages` 리스트를 인자로 전달해줘.
+
+# 5. **최종 응답(JSON)에 종료 플래그 포함:**
+#    - 함수의 마지막 `return jsonify(...)` 부분을 수정해서, 기존의 'reply', 'stress_score'와 함께 **1번 단계에서 만든 `conversation_end` 변수**도 함께 반환하도록 해줘.
+#    - 최종 형태 예시: `return jsonify({'reply': bot_reply, 'stress_score': stress_score, 'conversation_end': conversation_end})`
+
+# **주의사항:**
+# - 위에 명시된 변경 사항들만 적용하고, 기존의 다른 코드 로직(예: 사용자 메시지 추출, API 호출 자체, 점수 계산 함수 호출 자체 등)은 유지해야 해.
+# - 세션 변수 이름('turn_count', 'chat_history', 'user_messages')과 JSON 응답 키('reply', 'stress_score', 'conversation_end')를 정확히 사용해줘.
