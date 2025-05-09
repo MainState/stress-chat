@@ -1,0 +1,45 @@
+# 내 졸업 작품 프로젝트의 UI/UX를 개선하고 싶어.
+# 현재 20턴 대화 후 결과 화면으로 전환이 잘 안 되고, 언제 대화가 끝나는지도 알기 어려워. 다음 사항들을 수정해줘:
+
+# === 1. JavaScript 수정 (`index.html` 내 `<script>` 또는 `static/script.js`): 화면 전환 로직 강화 ===
+# `Workspace` API 응답을 처리하는 `.then(data => { ... })` 블록 내부를 검토하고 수정해줘.
+
+# a. `if (data.conversation_end === true)` 조건문이 실행될 때:
+#    i.  디버깅을 위해 `console.log("Conversation ended. Switching to results screen. Data:", data);` 로그를 추가해줘.
+#    ii. `chatSection` (ID: "chat-section"으로 가정)을 확실히 숨기도록 `chatSection.style.display = 'none';` 코드를 실행해줘.
+#    iii.`resultsSection` (ID: "results-section"으로 가정)을 확실히 보여주도록 `resultsSection.style.display = 'block';` 코드를 실행해줘.
+#    iv. `finalScoreValueElement` (ID: "final-score-value"으로 가정)의 `textContent`를 `data.stress_score + "점"`으로 설정하여 최종 점수를 표시해줘.
+#    v.  기존에 채팅창(`chat-box`)에 마지막 메시지를 추가하는 로직이 이 if 블록 안에 있다면, 중복될 수 있으니 확인하고 필요시 조정해줘. (결과 화면에 점수를 명확히 표시하므로)
+
+# b. `else` 블록 (즉, `data.conversation_end === false` 이고 대화가 계속될 때):
+#    i.  `chatSection.style.display = 'block';` 코드가 있는지 확인하고, 없다면 추가해줘.
+#    ii. `resultsSection.style.display = 'none';` 코드가 있는지 확인하고, 없다면 추가해줘.
+#    iii. (기존처럼 `chat-box`에 사용자 메시지와 챗봇 응답을 표시하고, `score-display`에 현재 턴의 점수를 업데이트하는 로직은 이 `else` 블록 안에 있어야 해.)
+
+# === 2. 턴 카운터 표시 기능 추가 ===
+
+# **HTML 수정 (`templates/index.html`):**
+#   - 사용자가 현재 몇 번째 대화 턴인지 알 수 있도록, 채팅 UI의 적절한 위치(예: 기존 `score-display` 영역 근처 또는 위)에 새로운 `div`를 추가해줘.
+#   - 이 `div`의 ID는 `turn-indicator`로 하고, 초기에는 비워두거나 "대화 시작 중..." 같은 텍스트를 넣어줘.
+#     예시: `<div id="turn-indicator" style="margin-bottom: 5px; font-size: 0.9em; color: grey;"></div>`
+
+# **백엔드 수정 (`main.py` 또는 `app.py`의 `handle_message` 함수):**
+#   a. `handle_message` 함수 내에서 계산된 `turn_count` 변수가 있을 거야.
+#   b. 이 `turn_count` 값을 함수의 마지막 `return jsonify(...)` 부분에 추가해서 프론트엔드로 보내줘.
+#      - JSON 응답 객체에 `current_turn` 이라는 키로 `turn_count` 값을 넣어줘.
+#      - 최대 턴 수(현재 20)도 `max_turns` 라는 키로 함께 보내주면 좋아 (예: `max_turns: 20`).
+#      - 최종 return 예시: `return jsonify({'reply': bot_reply, 'stress_score': stress_score, 'conversation_end': conversation_end, 'current_turn': turn_count, 'max_turns': 20})`
+
+# **JavaScript 수정 (fetch 응답 처리 블록):**
+#   a. JavaScript 최상단 또는 적절한 범위에 `const turnIndicator = document.getElementById('turn-indicator');` 코드를 추가해서 HTML 요소를 참조하게 해줘.
+#   b. `Workspace` 응답을 처리하는 `.then(data => { ... })` 블록 안에, `turnIndicator` 요소의 `textContent`를 업데이트하는 코드를 추가해줘.
+#      - 예시: `if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) { turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`; }`
+#   c. `if (data.conversation_end === true)` 블록 안에서는 `turnIndicator` 내용을 "대화 종료됨" 또는 유사한 메시지로 변경하거나, 아예 `turnIndicator.style.display = 'none';`으로 숨겨도 좋아.
+
+# **"다시 시작하기" 버튼 확인:**
+# `resultsSection`의 "다시 시작하기" 버튼(`try-again-button`)은 클릭 시 `window.location.reload();`를 호출해서 페이지를 새로고침하는지 확인해줘. (이게 가장 간단한 초기화 방법이야)
+
+# **가정:**
+# - HTML에는 이미 `id="chat-section"`과 `id="results-section"` (내부에 `id="final-score-value"`, `id="try-again-button"`) 구조가 준비되어 있다고 가정할게.
+# - JavaScript에는 `chatSection`, `resultsSection`, `finalScoreValueElement`, `tryAgainButton` 등의 변수가 이미 해당 ID로 요소를 참조하고 있다고 가정할게 (만약 없다면 이 부분도 생성 요청).
+# - 기존 점수 표시 영역의 ID는 `score-display`로 가정할게.
