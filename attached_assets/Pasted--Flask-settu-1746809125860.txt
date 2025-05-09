@@ -1,0 +1,66 @@
+# 내 Flask 채팅 애플리케이션에 사용자가 채팅 입력창을 통해 특정 대화 턴으로 바로 이동할 수 있는 '치트 코드' 기능을 추가하려고 해.
+# 치트 코드 형식은 `/setturn N` (여기서 N은 이동할 턴 번호)이야.
+
+# === 1. 프론트엔드 JavaScript 수정 (`index.html` 내 `<script>` 태그 또는 `static/script.js` 파일) ===
+
+# 현재 사용자가 메시지를 입력하고 '전송' 버튼을 누르거나 Enter 키를 쳤을 때 실행되는 JavaScript 함수 내부를 다음과 같이 수정해줘:
+
+# a. 사용자가 입력한 메시지 텍스트(`userInput.value.trim()`)를 가져온 후,
+#    이 메시지가 치트 코드 형식 (`/setturn`으로 시작하고 그 뒤에 숫자가 오는 형태)인지 정규표현식을 사용해서 확인해줘.
+#    (예시 정규표현식: `const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);`)
+
+# b. 만약 `cheatCodeMatch` 변수를 통해 치트 코드가 감지되었다면 (즉, `cheatCodeMatch`가 null이 아니라면):
+#    i.  정규표현식의 캡처 그룹을 사용해 입력된 숫자(목표 턴 번호)를 추출하고 정수형으로 변환해줘 (`parseInt(cheatCodeMatch[1], 10)`).
+#    ii. 채팅 입력창(`userInput` ID를 가진 요소)의 내용을 즉시 비워줘.
+#    iii. 백엔드의 `/send_message` 경로로 **POST 방식의 fetch 요청**을 보내줘.
+#        요청 본문(body)에는 반드시 다음과 같은 **특별한 JSON 객체**를 문자열로 변환(`JSON.stringify`)해서 포함시켜줘:
+#        ```json
+#        {
+#            "cheat_command": "set_turn",
+#            "target_turn": 추출한_목표_턴_번호
+#        }
+#        ```
+#        요청 헤더(headers)에는 `'Content-Type': 'application/json'`을 포함해야 해.
+#    iv. 백엔드로부터 응답(data)이 오면, 다음 작업을 수행해줘:
+#        - `console.log("Cheat command response from backend:", data);` 로 응답 내용을 확인.
+#        - 현재 채팅창 내용(`chat-box` ID를 가진 요소)을 `innerHTML = '';` 코드로 완전히 비워줘.
+#        - 만약 응답 데이터(`data`)에 `reply`가 있다면, 해당 내용을 시스템 안내 메시지 형태로 채팅창에 추가해줘 (예: `<p><strong>[시스템]</strong> ${data.reply}</p>`).
+#        - 응답 데이터에 `current_turn`과 `max_turns`가 있다면, `turn-indicator` ID를 가진 요소의 텍스트를 "현재 진행: ${data.current_turn} / ${data.max_turns} 턴" 형식으로 업데이트해줘.
+#        - 응답 데이터에 `stress_score`가 있다면, `score-display` ID를 가진 요소의 텍스트도 "현재 추정 스트레스 점수: ${data.stress_score} / 10" 형식으로 업데이트해줘.
+#        - 사용자 입력창(`userInput`)과 전송 버튼(`send-button`)의 `disabled` 속성을 `false`로 설정해서 다시 활성화시켜줘.
+#    v.  (중요) 치트 코드 문자열 자체는 일반 사용자 메시지처럼 채팅창에 "나: /setturn N" 형태로 표시되지 않도록 해줘.
+
+# c. 만약 `cheatCodeMatch` 변수가 `null`이라면 (즉, 치트 코드가 아니라 일반 메시지라면):
+#    - 기존의 일반 메시지 처리 로직 (사용자 메시지를 채팅창에 표시, 입력창 비우기, `{ "message": userMessage }` 형식으로 백엔드에 POST 요청 전송, 응답 받아 채팅창 및 점수/턴 표시기 업데이트 등)을 그대로 수행하도록 해줘.
+
+# === 2. 백엔드 코드 수정 (`main.py` 또는 `app.py` 파일의 `handle_message` 함수) ===
+
+# `/send_message` 라우트에 연결된 `handle_message` 함수의 시작 부분을 수정해서, 치트 코드 요청을 먼저 감지하고 처리하도록 해줘:
+
+# a. 함수 시작 부분에서 `data = request.json`으로 클라이언트로부터 받은 JSON 데이터를 가져온 후,
+#    `cheat_command = data.get('cheat_command')` 와 `target_turn_value = data.get('target_turn')`으로 해당 값들을 변수에 할당해줘.
+
+# b. 만약 `cheat_command`의 값이 `"set_turn"` 이고 `target_turn_value`가 `None`이 아니라면 (즉, 치트 코드 요청이 맞다면):
+#    i.  `target_turn_value`를 정수형으로 변환해줘. 변환 실패 시 오류 처리를 위해 `try-except ValueError` 블록을 사용하는 것이 좋아. 만약 변환된 정수가 1 미만이면 1로 설정해줘.
+#    ii. Flask 세션 변수들을 다음과 같이 초기화/설정해줘:
+#        - `session['turn_count']`를 `변환된_목표_턴_번호 - 1`로 설정해줘. (다음 일반 메시지 요청 시 1 증가되어 목표 턴 번호가 되도록)
+#        - `session['user_messages']`를 빈 리스트 `[]`로 초기화해줘.
+#        - `session['chat_history']`를 빈 리스트 `[]`로 초기화해줘.
+#        - (필요하다면 `session.modified = True`를 호출해줘.)
+#    iii. 서버 콘솔에 "CHEAT: Turn set to effectively start at {실제_적용될_다음_턴_번호}." 와 같은 디버깅 로그를 출력해줘.
+#    iv. 프론트엔드에 반환할 JSON 응답을 구성해줘. 이 응답에는 다음 정보가 포함되어야 해:
+#        - `reply`: "대화 상태가 {실제_적용될_다음_턴_번호}번째 턴으로 설정되었습니다. 다음 메시지를 입력해주세요." 같은 안내 메시지.
+#        - `stress_score`: `calculate_stress_score([])`를 호출하여 계산된 초기 점수 (보통 5점).
+#        - `conversation_end`: `(실제_적용될_다음_턴_번호 >= 20)` 와 같이 최대 턴 수(현재 20으로 가정)와 비교하여 boolean 값 설정.
+#        - `current_turn`: `실제_적용될_다음_턴_번호` 값.
+#        - `max_turns`: 20 (또는 설정된 최대 턴 수).
+#    v.  이 JSON 응답을 `jsonify`로 변환하여 반환하고, 이 분기에서는 함수 실행을 여기서 종료해줘.
+
+# c. 만약 치트 명령이 아니라면 (즉, `cheat_command`가 없거나 다른 값이면):
+#    - `user_message = data.get('message')`로 사용자 메시지를 가져와서, 이후의 기존 일반 메시지 처리 로직 (턴 카운터 증가 및 저장, `user_messages` 기록 누적 및 저장, `chat_history` 구성 및 저장, AI API 호출, `calculate_stress_score` 호출, 최종 JSON 응답 반환 등)을 **그대로 수행**하도록 해줘.
+#    - 일반 메시지 처리 시 `user_message`가 `None`일 경우를 대비한 오류 처리도 확인해줘.
+
+# **핵심:**
+# - 프론트엔드 JavaScript는 입력창의 내용을 먼저 검사해서, 치트 코드인 경우 특별한 JSON을 백엔드로 보낸다.
+# - 백엔드 Flask는 받은 JSON에 `cheat_command`가 있는지 확인하고, 있다면 세션 상태를 조작한 후 특별한 응답을 보낸다. 없다면 평소처럼 메시지를 처리한다.
+# - 세션 변수(`turn_count`, `user_messages`, `chat_history`)를 치트 코드에 맞게 정확히 초기화/설정하는 것이 매우 중요하다.
