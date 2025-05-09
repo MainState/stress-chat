@@ -87,7 +87,9 @@ def handle_message():
     return jsonify({
         'reply': bot_reply,
         'stress_score': stress_score,
-        'conversation_end': conversation_end
+        'conversation_end': conversation_end,
+        'current_turn': turn_count,
+        'max_turns': 20
     })
 
 if __name__ == '__main__':

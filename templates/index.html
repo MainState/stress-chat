@@ -25,6 +25,7 @@
             <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
             <button id="send-button">전송</button>
         </div>
+        <div id="turn-indicator" style="margin-bottom: 5px; font-size: 0.9em; color: grey;">대화 시작 중...</div>
         <div id="score-display"></div>
     </div>
 
@@ -44,6 +45,12 @@
         const scoreDisplay = document.getElementById('score-display');
         const finalScoreValueElement = document.getElementById('final-score-value');
         const tryAgainButton = document.getElementById('try-again-button');
+        const turnIndicator = document.getElementById('turn-indicator');
+
+        // Try Again 버튼 이벤트 리스너
+        tryAgainButton.addEventListener('click', () => {
+            window.location.reload();
+        });
 
         sendButton.addEventListener('click', async () => {
             const userMessage = userInput.value.trim();
@@ -63,11 +70,20 @@
 
                     const data = await response.json();
                     
+                    // 턴 카운터 업데이트
+                    if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+                        turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
+                    }
+
                     if (data.conversation_end === true) {
+                        console.log("Conversation ended. Switching to results screen. Data:", data);
                         // 채팅 섹션 숨기고 결과 섹션 표시
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
                         finalScoreValueElement.textContent = data.stress_score + "점";
+                        if (turnIndicator) {
+                            turnIndicator.style.display = 'none';
+                        }
                     } else {
                         // 대화 계속 진행
                         chatSection.style.display = 'block';
