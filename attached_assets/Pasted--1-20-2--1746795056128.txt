@@ -1,0 +1,31 @@
+# 내 졸업 작품 프로젝트 코드를 수정하려고 해. 두 가지 주요 변경 사항이 있어:
+# 1. 백엔드에서 대화 종료 턴 수를 20으로 변경.
+# 2. 프론트엔드에서 대화 종료 시 사용자에게 평가 완료를 더 명확히 안내.
+
+# === 1. 백엔드 코드 수정 (`main.py` 또는 `app.py` 파일) ===
+
+# `handle_message` 함수 내부를 찾아서 다음 부분을 수정해줘:
+# - 함수 시작 부분에 있는 `turn_count` 관련 로직에서, 대화 종료를 결정하는 조건문의 숫자를 변경해야 해.
+# - 기존에 `if turn_count >= 10:` 또는 `if turn_count >= 15:` 와 같이 되어 있던 부분을 찾아서, 숫자를 `20`으로 수정해줘.
+# - 즉, `if turn_count >= 20:` 가 되도록 변경하고, 해당 조건 만족 시 출력되는 로그 메시지도 "Conversation turn limit (20 turns) reached." 와 같이 수정해주면 좋겠어.
+# - `conversation_end` 플래그를 `True`로 설정하는 로직은 그대로 유지해줘.
+
+# === 2. 프론트엔드 JavaScript 코드 수정 (HTML 파일 내 `<script>` 태그 또는 `static/script.js` 파일) ===
+
+# `Workspace` API 호출 후 응답(data)을 처리하는 `.then(data => { ... })` 블록 내부를 찾아서 다음 부분을 수정/보강해줘:
+# - `if (data.conversation_end === true)` 조건문 블록 안의 내용을 아래 설명대로 강화해줘:
+#   a. **입력 비활성화:** `user-input` ID를 가진 입력 필드와 `send-button` ID를 가진 버튼을 찾아서 `disabled = true` 로 설정해줘. (이미 있다면 확인만)
+#   b. **최종 점수 강조 표시:** `chat-box` ID를 가진 채팅창 div의 맨 아래에 새로운 `<p>` 요소를 만들어서 추가해줘. 이 `<p>` 요소에는 다음과 같은 내용을 굵은 글씨(<strong>)와 특정 색상(예: 'navy')으로 표시해줘:
+#      `"[최종 평가] 현재까지의 대화를 바탕으로 추정된 스트레스 점수는 ${data.stress_score}점 입니다."`
+#      (여기서 `${data.stress_score}`는 실제 점수 값으로 대체되어야 해.)
+#   c. **평가 종료 안내 메시지 추가:** b에서 추가한 메시지 바로 아래에, 또 다른 새로운 `<p>` 요소를 만들어서 추가해줘. 이 요소에는 다음과 같은 일반 텍스트를 넣어줘:
+#      `"스트레스 평가 대화가 종료되었습니다. 결과는 참고용이며, 전문적인 진단이 필요하시면 전문가와 상담하세요."`
+#   d. **기존 점수 표시 영역 업데이트 (선택 사항):** 만약 `score-display` ID를 가진 별도의 점수 표시 영역이 있다면, 그 내용도 `textContent`를 사용하여 "최종 스트레스 점수: ${data.stress_score} / 10" 와 같이 최종 점수로 한번 더 업데이트해줘.
+#   e. 채팅창 스크롤은 계속 맨 아래로 유지해줘 (`chatBox.scrollTop = chatBox.scrollHeight;`).
+
+# - `if (data.conversation_end === true)` 조건문의 `else` 블록 (즉, 대화가 계속 진행 중인 경우)에는,
+#   혹시 모를 상황에 대비해 `user-input`과 `send-button`의 `disabled` 속성을 `false`로 설정하는 코드가 있도록 해줘. (이미 있다면 확인만)
+
+# **주의사항:**
+# - 각 파일에서 정확한 변수명(예: `turn_count`, `conversation_end`, `userInput`, `sendButton`, `chatBox`, `scoreDisplay` 등)과 기존 코드 구조를 최대한 유지하면서 요청한 변경사항을 적용해줘.
+# - HTML 요소 ID는 따옴표 안에 정확히 작성해줘.
