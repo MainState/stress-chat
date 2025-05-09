@@ -1,0 +1,50 @@
+# 내 Flask 앱(`main.py` 또는 `app.py`)의 세션 관리 로직에 문제가 있는 것 같아. 다음 문제들을 해결하도록 코드를 수정해줘:
+# 1. `/send_message` 경로의 `handle_message` 함수 내에서 'turn_count'가 특정 숫자(예: 14)에서 더 이상 증가하지 않아.
+# 2. 스트레스 점수(`stress_score`)가 대화가 진행되어도 누적되지 않고, 새 메시지 입력 시 특정 값(예: 4점)으로 초기화되는 것처럼 보여. 20턴 동안의 종합적인 점수가 나와야 해.
+
+# 가정:
+# - `from flask import session`은 이미 import 되어 있음.
+# - `app.secret_key`는 적절히 설정되어 있음.
+# - `calculate_stress_score` 함수는 사용자 메시지 리스트 전체를 인자로 받도록 되어 있음.
+
+# === 수정 요청 사항 ===
+
+# 1. **'/' (홈) 라우트 함수 수정:**
+#    - 사용자가 처음 방문하거나 "다시 시작하기" 등으로 홈에 올 때, 대화 관련 세션 변수들이 확실히 초기화되도록 해줘.
+#    - 함수 내에 다음 코드를 추가하거나 확인해줘:
+#      ```python
+#      session.pop('turn_count', None)
+#      session.pop('user_messages', None) # 점수 계산용 사용자 메시지 기록
+#      session.pop('chat_history', None)  # AI API 전달용 전체 대화(역할 포함) 기록
+#      ```
+
+# 2. **`/send_message` 경로의 `handle_message` 함수 전체 로직 점검 및 수정:**
+
+#    a. **턴 카운터 로직 (함수 시작 부분):**
+#       - `turn_count = session.get('turn_count', 0)` 로 올바르게 세션에서 값을 가져오는지 확인.
+#       - `turn_count += 1` 로 증가시키는지 확인.
+#       - `session['turn_count'] = turn_count` 로 세션에 **확실히 다시 저장**하는지 확인.
+#       - `conversation_end` 플래그 설정 로직 (`if turn_count >= 20:`)은 그대로 유지.
+
+#    b. **점수 계산용 사용자 메시지 기록 관리 (`user_messages` 세션 변수):**
+#       - AI API 호출 **전이나 후, 하지만 `calculate_stress_score` 호출 직전**에 다음 로직이 정확히 있는지 확인/수정해줘:
+#         i.  `user_messages_for_scoring = session.get('user_messages', [])` 로 세션에서 **이전까지의 모든 사용자 메시지 리스트**를 가져와줘.
+#         ii. 현재 사용자 메시지(`user_message`, 문자열)를 `user_messages_for_scoring` 리스트에 **추가(append)**해줘.
+#         iii.업데이트된 `user_messages_for_scoring` 리스트를 `session['user_messages']`에 **다시 저장**해줘.
+#         iv. `calculate_stress_score` 함수를 호출할 때는 이 **누적된 `user_messages_for_scoring` 리스트 전체**를 인자로 전달해야 해.
+
+#    c. **AI API 전달용 전체 대화 기록 관리 (`chat_history` 세션 변수):**
+#       - AI API를 호출하기 위해 `messages_for_api`를 구성하기 **직전**에 다음 로직이 있는지 확인/수정해줘:
+#         i.  `chat_history_for_api = session.get('chat_history', [])` 로 세션에서 이전 전체 대화 기록(역할과 내용 포함된 딕셔너리 리스트)을 가져와줘.
+#       - `messages_for_api` 리스트를 만들 때, 시스템 프롬프트 다음에 `chat_history_for_api`의 최근 N개 메시지를 추가하고, 그 다음에 현재 사용자 메시지를 추가하는지 확인해줘.
+#       - AI 응답(`bot_reply`)을 받은 **후**에 다음 로직이 있는지 확인/수정해줘:
+#         i.  `chat_history_for_storage = session.get('chat_history', [])` 로 다시 세션에서 기록을 가져오거나 위에서 가져온 `chat_history_for_api` 변수를 사용.
+#         ii. 현재 사용자 메시지(`{"role": "user", "content": user_message}`)를 `chat_history_for_storage`에 추가해줘.
+#         iii. AI 응답(`{"role": "assistant", "content": bot_reply}`)을 `chat_history_for_storage`에 추가해줘.
+#         iv. 업데이트된 `chat_history_for_storage` 리스트를 `session['chat_history']`에 **다시 저장**해줘.
+
+#    d. **최종 응답 반환:**
+#       - `jsonify`로 반환하는 데이터에 `reply`, `stress_score`, `conversation_end`, `current_turn` (업데이트된 `turn_count` 값), `max_turns` (예: 20)가 모두 포함되는지 확인.
+
+# **핵심은 각 세션 변수(`turn_count`, `user_messages`, `chat_history`)가 매 요청마다 올바르게 로드되고, 업데이트된 후 다시 세션에 정확히 저장되어 다음 요청에서 사용될 수 있도록 하는 거야.**
+# 디버깅을 위해 각 세션 변수를 읽고 쓸 때 `print()` 문으로 값을 확인하는 코드를 중간중간 넣어줘도 좋아.
