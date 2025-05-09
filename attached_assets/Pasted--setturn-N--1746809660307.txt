@@ -1,0 +1,54 @@
+# 내 채팅 앱의 '치트 코드' 기능이 작동하지 않아 디버깅하려고 해.
+# 치트 코드 (`/setturn N`) 입력 시 프론트엔드와 백엔드의 주요 실행 지점에 로그를 추가해서 원인을 파악하고 싶어.
+
+# === 1. 프론트엔드 JavaScript 수정 (`index.html` 내 `<script>` 또는 `static/script.js`) ===
+
+# 메시지 전송 로직 내부, 특히 치트 코드를 감지하고 처리하는 부분에 `console.log`를 추가해줘:
+
+# a. 사용자가 입력한 메시지(`userMessage`)를 가져온 직후에 다음 로그 추가:
+#    `console.log("Frontend: User input received:", userMessage);`
+
+# b. 치트 코드 감지를 위한 정규표현식 매치 결과(`cheatCodeMatch`) 바로 다음에 다음 로그 추가:
+#    `console.log("Frontend: Cheat code match result:", cheatCodeMatch);`
+
+# c. `if (cheatCodeMatch)` 조건문 블록이 시작되는 **바로 안쪽**에 다음 로그 추가:
+#    `console.log("Frontend: Cheat code detected. Processing...");`
+#    `const targetTurn = parseInt(cheatCodeMatch[1], 10);`
+#    `console.log("Frontend: Parsed targetTurn for cheat:", targetTurn);`
+#    `const payload = { cheat_command: "set_turn", target_turn: targetTurn };`
+#    `console.log("Frontend: Sending CHEAT payload to backend:", payload);`
+
+# d. 치트 코드용 `Workspace` 요청의 응답을 받는 `.then(data => { ... })` 블록 **가장 첫 줄**에 다음 로그 추가:
+#    `console.log("Frontend: Received response for CHEAT command:", data);`
+
+# e. 일반 메시지 처리 로직 (`else` 블록)이 시작되는 **바로 안쪽**에 다음 로그 추가:
+#    `console.log("Frontend: Normal message detected. Processing...");`
+
+# === 2. 백엔드 코드 수정 (`main.py` 또는 `app.py`의 `handle_message` 함수) ===
+
+# `/send_message` 라우트의 `handle_message` 함수 내부에 `print()` 문을 추가해줘:
+
+# a. 함수 시작 부분, `data = request.json` 바로 다음에 다음 로그 추가:
+#    `print(f"--- Backend: Received request data: {data} ---")`
+
+# b. `if data.get('cheat_command') == "set_turn":` 조건문 블록이 시작되는 **바로 안쪽**에 다음 로그 추가:
+#    `print(f"DEBUG: Backend: CHEAT command processing branch entered. Command data: {data}")`
+
+# c. 치트 코드 처리 블록 내에서 세션 변수들(`turn_count`, `user_messages`, `chat_history`)을 초기화/설정한 **직후**에 다음 로그 추가:
+#    `print(f"DEBUG: Backend: Session after CHEAT processing: turn_count={session.get('turn_count')}, user_messages_len={len(session.get('user_messages', []))}, chat_history_len={len(session.get('chat_history', []))}")`
+
+# d. 치트 코드 처리 후 `jsonify(...)`로 응답을 반환하기 **바로 전**에 다음 로그 추가:
+#    `response_for_cheat = {'reply': bot_reply_for_cheat, ...}` (기존 응답 객체)
+#    `print(f"DEBUG: Backend: Sending response for CHEAT: {response_for_cheat}")`
+#    `return jsonify(response_for_cheat)`
+
+# e. 일반 메시지 처리 로직 (`else` 블록 또는 치트 코드 분기 이후의 로직)이 시작되는 부분에 다음 로그 추가:
+#    `print(f"DEBUG: Backend: NORMAL message processing branch entered for: {data.get('message')}")`
+
+# f. 일반 메시지 처리 후 `jsonify(...)`로 응답을 반환하기 **바로 전**에 세션 상태와 응답 내용을 출력하는 로그 추가:
+#    `print(f"DEBUG: Backend: Session before sending NORMAL response: {dict(session)}")`
+#    `response_for_normal = {'reply': bot_reply, ...}` (기존 응답 객체)
+#    `print(f"DEBUG: Backend: Sending response for NORMAL: {response_for_normal}")`
+#    `return jsonify(response_for_normal)`
+
+# 위 로그들이 정확한 위치에 추가되도록 해주고, 다른 로직은 변경하지 말아줘.
