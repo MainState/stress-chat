@@ -56,10 +56,22 @@
             const userMessage = userInput.value.trim();
             
             if (userMessage) {
-                chatBox.innerHTML += `<p>나: ${userMessage}</p>`;
-                userInput.value = '';
-
+                const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
+                
                 try {
+                    let requestBody;
+                    if (cheatCodeMatch) {
+                        const targetTurn = parseInt(cheatCodeMatch[1], 10);
+                        requestBody = {
+                            cheat_command: "set_turn",
+                            target_turn: targetTurn
+                        };
+                    } else {
+                        chatBox.innerHTML += `<p>나: ${userMessage}</p>`;
+                        requestBody = { message: userMessage };
+                    }
+                    
+                    userInput.value = '';
                     const response = await fetch('/send_message', {
                         method: 'POST',
                         headers: {

@@ -37,6 +37,29 @@ def handle_message():
     print("--- handle_message START ---")
     print(f"DEBUG: Session BEFORE turn_count logic: {dict(session)}")
     
+    # 치트 코드 처리
+    data = request.json
+    if data.get('cheat_command') == 'set_turn' and data.get('target_turn') is not None:
+        target_turn = max(1, int(data['target_turn']))
+        session['turn_count'] = target_turn - 1  # 다음 증가에서 target_turn이 되도록
+        session['user_messages'] = []
+        session['chat_history'] = []
+        print(f"CHEAT: Turn set to effectively start at {target_turn}.")
+        
+        response_data = {
+            'reply': f"대화 상태가 {target_turn}번째 턴으로 설정되었습니다. 다음 메시지를 입력해주세요.",
+            'stress_score': calculate_stress_score([]),
+            'conversation_end': (target_turn >= 20),
+            'current_turn': target_turn,
+            'max_turns': 20
+        }
+        return jsonify(response_data)
+    
+    # 일반 메시지 처리
+    user_message = data.get('message')
+    if user_message is None:
+        return jsonify({'error': 'No message provided'}), 400
+        
     # 턴 카운터 로직 - 무조건 실행되는 첫 부분
     turn_count = session.get('turn_count', 0)
     print(f"DEBUG: turn_count AFTER GET from session: {turn_count}")
