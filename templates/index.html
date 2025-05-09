@@ -3,33 +3,56 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>채팅 애플리케이션</title>
+    <title>스트레스 평가 대화</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        #chat-section, #results-section { padding: 20px; }
+        #chat-box { height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
+        #user-input { width: 80%; padding: 8px; margin-right: 10px; }
+        #send-button { padding: 8px 15px; }
+        #score-display { margin-top: 20px; font-weight: bold; }
+        #results-section { text-align: center; }
+        #final-score-value { font-size: 3em; font-weight: bold; color: #2c3e50; margin: 30px 0; }
+        #try-again-button { padding: 10px 20px; font-size: 1.2em; background-color: #3498db; color: white; border: none; cursor: pointer; border-radius: 5px; }
+        #try-again-button:hover { background-color: #2980b9; }
+        .disclaimer { color: #7f8c8d; font-style: italic; margin-top: 20px; }
+    </style>
 </head>
 <body>
-    <div id="chat-box"></div>
-    
-    <div>
-        <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
-        <button id="send-button">전송</button>
+    <div id="chat-section">
+        <div id="chat-box"></div>
+        <div>
+            <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
+            <button id="send-button">전송</button>
+        </div>
+        <div id="score-display"></div>
+    </div>
+
+    <div id="results-section" style="display: none;">
+        <h2>최종 스트레스 평가 결과</h2>
+        <p id="final-score-value"></p>
+        <p class="disclaimer">본 점수는 참고용이며 의학적 진단을 대체할 수 없습니다.<br>전문적인 상담이 필요하시다면 전문가와 상담하시기 바랍니다.</p>
+        <button id="try-again-button">처음부터 다시 시작하기</button>
     </div>
     
-    <div id="score-display"></div>
-    
     <script>
+        const chatSection = document.getElementById('chat-section');
+        const resultsSection = document.getElementById('results-section');
+        const chatBox = document.getElementById('chat-box');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
-        const chatBox = document.getElementById('chat-box');
+        const scoreDisplay = document.getElementById('score-display');
+        const finalScoreValueElement = document.getElementById('final-score-value');
+        const tryAgainButton = document.getElementById('try-again-button');
 
         sendButton.addEventListener('click', async () => {
             const userMessage = userInput.value.trim();
             
             if (userMessage) {
-                // 사용자 메시지 표시
                 chatBox.innerHTML += `<p>나: ${userMessage}</p>`;
                 userInput.value = '';
 
                 try {
-                    // 서버에 메시지 전송
                     const response = await fetch('/send_message', {
                         method: 'POST',
                         headers: {
@@ -39,25 +62,24 @@
                     });
 
                     const data = await response.json();
-                    // 챗봇 응답 표시
-                    chatBox.innerHTML += `<p>챗봇: ${data.reply}</p>`;
                     
                     if (data.conversation_end === true) {
-                        // 입력 비활성화
-                        userInput.disabled = true;
-                        sendButton.disabled = true;
-                        
-                        // 최종 점수 강조 표시
-                        chatBox.innerHTML += `<p><strong style="color: navy">[최종 평가] 현재까지의 대화를 바탕으로 추정된 스트레스 점수는 ${data.stress_score}점 입니다.</strong></p>`;
-                        chatBox.innerHTML += `<p>스트레스 평가 대화가 종료되었습니다. 결과는 참고용이며, 전문적인 진단이 필요하시면 전문가와 상담하세요.</p>`;
-                        
-                        // 점수 표시 영역 업데이트
-                        const scoreDisplay = document.getElementById('score-display');
-                        if (scoreDisplay) {
-                            scoreDisplay.textContent = `최종 스트레스 점수: ${data.stress_score} / 10`;
-                        }
+                        // 채팅 섹션 숨기고 결과 섹션 표시
+                        chatSection.style.display = 'none';
+                        resultsSection.style.display = 'block';
+                        finalScoreValueElement.textContent = data.stress_score + "점";
                     } else {
-                        // 대화 진행 중인 경우 입력 활성화 유지
+                        // 대화 계속 진행
+                        chatSection.style.display = 'block';
+                        resultsSection.style.display = 'none';
+                        chatBox.innerHTML += `<p>챗봇: ${data.reply}</p>`;
+                        
+                        // 점수 표시 업데이트
+                        if (scoreDisplay) {
+                            scoreDisplay.textContent = `현재 스트레스 점수: ${data.stress_score} / 10`;
+                        }
+                        
+                        // 입력 활성화 유지
                         userInput.disabled = false;
                         sendButton.disabled = false;
                     }
@@ -75,6 +97,11 @@
             if (e.key === 'Enter') {
                 sendButton.click();
             }
+        });
+
+        // 다시 시작하기 버튼 처리
+        tryAgainButton.addEventListener('click', () => {
+            window.location.reload();
         });
     </script>
 </body>
