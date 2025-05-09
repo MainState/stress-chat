@@ -1,0 +1,181 @@
+# 내 채팅 애플리케이션의 프론트엔드 JavaScript 코드 (`index.html` 내 `<script>` 태그 또는 연결된 `static/script.js` 파일)를 수정하려고 해.
+# 현재 사용자가 채팅 입력창에 치트 코드(예: `/setturn 10`)를 입력해도 일반 메시지로 처리되는 문제가 있어.
+# 이 문제를 해결하기 위해, 메시지 전송을 담당하는 JavaScript 함수를 아래 제공하는 코드로 대체하거나, 이 코드를 참고해서 정확히 수정해줘.
+
+# 목표:
+# - 사용자가 `/setturn N` 형식의 치트 코드를 입력하면 이를 감지.
+# - 치트 코드일 경우, 백엔드로 `{ "cheat_command": "set_turn", "target_turn": N }` 형식의 특별한 JSON 페이로드를 전송.
+# - 일반 메시지일 경우, 기존처럼 `{ "message": "사용자 메시지" }` 형식의 JSON 페이로드를 전송.
+# - 치트 코드 입력 시에는 해당 명령어가 채팅창에 "나: /setturn N"으로 표시되지 않아야 함.
+# - 백엔드로부터의 응답을 처리하여 채팅창, 턴 표시기, 점수 표시 등을 올바르게 업데이트.
+
+# 가정:
+# - HTML에는 다음 ID를 가진 요소들이 존재함: 'user-input', 'send-button', 'chat-box', 'turn-indicator', 'score-display', 'chat-section', 'results-section', 'final-score-value', 'try-again-button'.
+# - 이 요소들에 대한 JavaScript 변수(예: `userInput`, `sendButton`, `chatBox` 등)는 이미 스크립트 내에 선언되어 있거나, 함수 내에서 `document.getElementById`로 가져올 수 있음.
+
+# 아래 제공하는 `sendMessage` 함수 코드로 기존의 메시지 전송 관련 함수를 교체하거나, 이 로직을 정확히 반영하여 수정해줘.
+# 함수는 `async`로 선언되어야 하고, `Workspace` 호출 시 `await`를 사용해야 해.
+
+async function sendMessage() {
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+    const chatBox = document.getElementById('chat-box');
+    const turnIndicator = document.getElementById('turn-indicator');
+    const scoreDisplay = document.getElementById('score-display'); // 채팅 중 점수 표시
+    const chatSection = document.getElementById('chat-section');
+    const resultsSection = document.getElementById('results-section');
+    const finalScoreValueElement = document.getElementById('final-score-value'); // 결과 화면 점수
+
+    const userMessage = userInput.value.trim();
+    if (userMessage === "") {
+        return; // 빈 메시지는 무시
+    }
+
+    console.log("Frontend: User input received:", userMessage);
+
+    const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
+    console.log("Frontend: Cheat code match result:", cheatCodeMatch);
+
+    if (cheatCodeMatch) {
+        // === 치트 코드 처리 경로 ===
+        console.log("Frontend: CHEAT CODE detected. Processing for cheat path...");
+        userInput.value = ""; // 입력창 먼저 비우기
+
+        const targetTurn = parseInt(cheatCodeMatch[1], 10);
+        console.log("Frontend: Parsed targetTurn for cheat:", targetTurn);
+
+        const payload = {
+            cheat_command: "set_turn",
+            target_turn: targetTurn
+        };
+        console.log("Frontend: Sending CHEAT payload to backend:", payload);
+
+        try {
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Frontend: Received response for CHEAT command from backend:", data);
+
+            chatBox.innerHTML = ''; // 채팅창 내용 모두 비우기
+
+            if (data.reply) {
+                const systemMessageP = document.createElement('p');
+                systemMessageP.innerHTML = `<strong>[시스템]</strong> ${data.reply}`;
+                chatBox.appendChild(systemMessageP);
+            }
+
+            if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+                turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
+            }
+
+            if (scoreDisplay && data.stress_score !== undefined) { // scoreDisplay 업데이트
+                 scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
+            }
+            
+            if (data.conversation_end === true) {
+                console.log("Frontend: CHEAT caused conversation end. Switching to results screen.");
+                if (chatSection) chatSection.style.display = 'none';
+                if (resultsSection) resultsSection.style.display = 'block';
+                if (finalScoreValueElement) finalScoreValueElement.textContent = data.stress_score + "점";
+                if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
+                if (userInput) userInput.disabled = true;
+                if (sendButton) sendButton.disabled = true;
+            } else {
+                if (userInput) userInput.disabled = false;
+                if (sendButton) sendButton.disabled = false;
+            }
+
+        } catch (error) {
+            console.error('Frontend: Error processing CHEAT command:', error);
+            const errorP = document.createElement('p');
+            errorP.textContent = `치트 코드 처리 오류: ${error.message}`;
+            errorP.style.color = 'red';
+            if (chatBox) chatBox.appendChild(errorP);
+        }
+
+    } else {
+        // === 일반 메시지 처리 경로 ===
+        console.log("Frontend: NORMAL message detected. Sending:", userMessage);
+
+        const userP = document.createElement('p');
+        userP.textContent = `나: ${userMessage}`;
+        if (chatBox) chatBox.appendChild(userP);
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+
+        userInput.value = ""; // 메시지 표시 후 입력창 비우기
+
+        try {
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: userMessage })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Frontend: Received response for NORMAL command from backend:", data);
+
+            if (data.reply) {
+                const botP = document.createElement('p');
+                botP.textContent = `챗봇: ${data.reply}`;
+                if (chatBox) chatBox.appendChild(botP);
+            }
+
+            if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+                turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
+            }
+
+            if (scoreDisplay && data.stress_score !== undefined) {
+                scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
+            }
+
+            if (data.conversation_end === true) {
+                console.log("Frontend: NORMAL conversation ended. Switching to results screen.");
+                if (chatSection) chatSection.style.display = 'none';
+                if (resultsSection) resultsSection.style.display = 'block';
+                if (finalScoreValueElement) finalScoreValueElement.textContent = data.stress_score + "점";
+                if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
+                if (userInput) userInput.disabled = true;
+                if (sendButton) sendButton.disabled = true;
+            } else {
+                if (userInput) userInput.disabled = false;
+                if (sendButton) sendButton.disabled = false;
+            }
+
+        } catch (error) {
+            console.error('Frontend: Error processing NORMAL command:', error);
+            const errorP = document.createElement('p');
+            errorP.textContent = `오류: ${error.message}`;
+            errorP.style.color = 'red';
+            if (chatBox) chatBox.appendChild(errorP);
+        }
+    }
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// 기존에 있던 sendButton의 클릭 이벤트 리스너나 userInput의 keypress 이벤트 리스너가
+// 이 새로운 sendMessage 함수를 호출하도록 연결 부분을 확인하거나 수정해야 할 수 있어.
+// 예를 들어, 기존에 addEventListener('click', 기존함수명) 이었다면,
+// addEventListener('click', sendMessage) 로 변경해줘.
+// 만약 HTML 인라인으로 onclick="기존함수명()" 되어 있다면, 그것도 onclick="sendMessage()" 로 바꿔야 할 수 있어.
+// 그리고 tryAgainButton에 대한 이벤트 리스너도 확인해줘.
+// 예시:
+// const tryAgainButton = document.getElementById('try-again-button');
+// if (tryAgainButton) {
+//    tryAgainButton.addEventListener('click', function() {
+//        window.location.reload();
+//    });
+// }
