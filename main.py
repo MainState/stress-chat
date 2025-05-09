@@ -36,9 +36,9 @@ def handle_message():
     print(f"Current turn: {turn_count}")
     
     conversation_end = False
-    if turn_count >= 15:
+    if turn_count >= 20:
         conversation_end = True
-        print("Conversation turn limit reached.")
+        print("Conversation turn limit (20 turns) reached.")
     
     user_message = request.json.get('message')
     print(f"Received: {user_message}")
