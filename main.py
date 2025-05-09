@@ -39,21 +39,30 @@ def handle_message():
     
     # 치트 코드 처리
     data = request.json
-    if data.get('cheat_command') == 'set_turn' and data.get('target_turn') is not None:
-        target_turn = max(1, int(data['target_turn']))
-        session['turn_count'] = target_turn - 1  # 다음 증가에서 target_turn이 되도록
-        session['user_messages'] = []
-        session['chat_history'] = []
-        print(f"CHEAT: Turn set to effectively start at {target_turn}.")
-        
-        response_data = {
-            'reply': f"대화 상태가 {target_turn}번째 턴으로 설정되었습니다. 다음 메시지를 입력해주세요.",
-            'stress_score': calculate_stress_score([]),
-            'conversation_end': (target_turn >= 20),
-            'current_turn': target_turn,
-            'max_turns': 20
-        }
-        return jsonify(response_data)
+    cheat_command = data.get('cheat_command')
+    target_turn_value = data.get('target_turn')
+    
+    if cheat_command == 'set_turn' and target_turn_value is not None:
+        try:
+            target_turn = max(1, int(target_turn_value))
+            session['turn_count'] = target_turn - 1  # 다음 증가에서 target_turn이 되도록
+            session['user_messages'] = []
+            session['chat_history'] = []
+            session.modified = True
+            
+            print(f"CHEAT: Turn set to effectively start at {target_turn}.")
+            response_data = {
+                'reply': f"대화 상태가 {target_turn}번째 턴으로 설정되었습니다. 다음 메시지를 입력해주세요.",
+                'stress_score': calculate_stress_score([]),
+                'conversation_end': (target_turn >= 20),
+                'current_turn': target_turn,
+                'max_turns': 20
+            }
+            return jsonify(response_data)
+            
+        except ValueError as e:
+            print(f"ERROR: Invalid turn number - {e}")
+            return jsonify({'error': '올바른 턴 번호를 입력해주세요.'}), 400
     
     # 일반 메시지 처리
     user_message = data.get('message')

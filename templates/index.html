@@ -57,7 +57,10 @@
             
             if (userMessage) {
                 const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
-                
+                userInput.value = '';
+                userInput.disabled = true;
+                sendButton.disabled = true;
+
                 try {
                     let requestBody;
                     if (cheatCodeMatch) {
@@ -70,8 +73,7 @@
                         chatBox.innerHTML += `<p>나: ${userMessage}</p>`;
                         requestBody = { message: userMessage };
                     }
-                    
-                    userInput.value = '';
+
                     const response = await fetch('/send_message', {
                         method: 'POST',
                         headers: {
@@ -81,6 +83,14 @@
                     });
 
                     const data = await response.json();
+                    console.log("Server response:", data);
+
+                    if (cheatCodeMatch) {
+                        chatBox.innerHTML = '';
+                        if (data.reply) {
+                            chatBox.innerHTML += `<p><strong>[시스템]</strong> ${data.reply}</p>`;
+                        }
+                    }
                     
                     // 턴 카운터 업데이트
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
