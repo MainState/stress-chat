@@ -54,11 +54,9 @@
 
         sendButton.addEventListener('click', async () => {
             const userMessage = userInput.value.trim();
-            console.log("Frontend: User input received:", userMessage);
             
             if (userMessage) {
                 const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
-                console.log("Frontend: Cheat code match result:", cheatCodeMatch);
                 userInput.value = '';
                 userInput.disabled = true;
                 sendButton.disabled = true;
@@ -66,16 +64,12 @@
                 try {
                     let requestBody;
                     if (cheatCodeMatch) {
-                        console.log("Frontend: Cheat code detected. Processing...");
                         const targetTurn = parseInt(cheatCodeMatch[1], 10);
-                        console.log("Frontend: Parsed targetTurn for cheat:", targetTurn);
                         requestBody = {
                             cheat_command: "set_turn",
                             target_turn: targetTurn
                         };
-                        console.log("Frontend: Sending CHEAT payload to backend:", requestBody);
                     } else {
-                        console.log("Frontend: Normal message detected. Processing...");
                         chatBox.innerHTML += `<p>나: ${userMessage}</p>`;
                         requestBody = { message: userMessage };
                     }
