@@ -51,6 +51,83 @@ def handle_message():
     chat_history_for_api = session.get('chat_history', [])
     
     print(f"DEBUG: Turn {turn_count}, PrevScore: {previous_score}, ScoreChanges: {score_change_count}")
+
+    # 치트 코드 처리
+    data = request.json
+    cheat_command = data.get('cheat_command')
+    if cheat_command == 'set_turn' or cheat_command == 'set_score':
+        # 기존 치트 코드 처리 로직 유지
+        return handle_cheat_command(data, turn_count, score_change_count)
+
+    # 일반 메시지 처리
+    user_message = data.get('message')
+    if user_message is None:
+        return jsonify({'error': 'No message provided'}), 400
+
+    # AI 응답 생성 (점수 계산보다 먼저 실행)
+    bot_reply = "AI API가 준비되지 않았습니다. (임시 응답)"
+    if openai_enabled:
+        messages_for_api = [
+            {"role": "system", "content": "너는 사용자가 편안하게 자신의 생각과 감정을 탐색하도록 돕는 '마음 길잡이' 챗봇이야.\n너의 핵심 임무는 약 20턴 내외의 대화를 통해 사용자가 최근 겪고 있는 스트레스에 대해 **스스로 하고 싶은 이야기**를 충분히 풀어놓고 정리할 수 있도록 **안전하고 수용적인 대화 공간을 제공하며, 부드럽게 질문을 던지는 것**이다.\n\n**가장 중요한 원칙: 너의 질문은 사용자의 답변을 특정 방향으로 유도하거나 너의 추측을 확인하려 해서는 안 된다.**\n사용자가 자발적으로 자신의 경험과 감정을 표현하도록 이끄는 **매우 개방적인 질문**을 사용해야 한다.\n예를 들어, \"그래서 많이 슬프셨겠네요?\" 와 같은 단정적인 공감이나 유도 질문 대신, \"그 경험이 어떠셨는지 조금 더 자세히 말씀해주실 수 있나요?\" 또는 \"그때 어떤 생각이나 감정들이 주로 드셨어요?\" 와 같이 사용자의 생각과 느낌 자체에 초점을 맞춰 질문하라."}
+        ]
+        
+        history_limit = 6
+        messages_for_api.extend(chat_history_for_api[-history_limit:])
+        messages_for_api.append({"role": "user", "content": user_message})
+        
+        try:
+            chat_completion = client.chat.completions.create(
+                model="gpt-4-turbo-preview",
+                messages=messages_for_api
+            )
+            bot_reply = chat_completion.choices[0].message.content
+            print(f"DEBUG: bot_reply generated: {bot_reply[:50]}...")
+            
+            # 대화 기록 업데이트
+            chat_history_for_api.append({"role": "user", "content": user_message})
+            chat_history_for_api.append({"role": "assistant", "content": bot_reply})
+            session['chat_history'] = chat_history_for_api
+            
+        except Exception as e:
+            print(f"[Error] OpenAI API error: {e}")
+            bot_reply = "죄송합니다. AI 응답 생성 중 오류가 발생했습니다."
+
+    # 사용자 메시지 기록 업데이트
+    user_messages_history.append(user_message)
+    session['user_messages'] = user_messages_history
+    print(f"DEBUG: user_messages saved to session: {len(user_messages_history)} messages")
+
+    # 현재 스트레스 점수 계산
+    current_stress_result = calculate_stress_score(user_messages_history)
+    current_overall_score = current_stress_result['overall_score']
+    print(f"DEBUG: Current calculated score: {current_overall_score}")
+
+    # 점수 변동 감지 및 카운트 업데이트
+    if abs(current_overall_score - previous_score) > 0.01:
+        score_change_count += 1
+        session['score_change_count'] = score_change_count
+        print(f"DEBUG: Score CHANGED! New score: {current_overall_score}, Change count: {score_change_count}")
+    else:
+        print(f"DEBUG: Score NOT changed. Current: {current_overall_score}, Previous: {previous_score}")
+    session['previous_score'] = current_overall_score
+
+    # 대화 종료 조건 체크
+    conversation_end = False
+    if score_change_count >= MAX_SCORE_CHANGES or turn_count >= MAX_CONVERSATION_TURNS:
+        conversation_end = True
+        print(f"DEBUG: Conversation END condition met. ScoreChanges: {score_change_count}, Turn: {turn_count}")
+
+    response_data = {
+        'reply': bot_reply,
+        'stress_score': current_overall_score,
+        'conversation_end': conversation_end,
+        'current_turn': turn_count,
+        'max_turns': MAX_CONVERSATION_TURNS,
+        'score_changes': score_change_count,
+        'max_score_changes': MAX_SCORE_CHANGES
+    }
+    print(f"[Response] Sending: {response_data}")
+    return jsonify(response_data)
     
     # 치트 코드 처리
     data = request.json
