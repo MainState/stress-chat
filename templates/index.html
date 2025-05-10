@@ -57,7 +57,9 @@
             console.log("Frontend: User input received:", userMessage);
 
             const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
+            const setScoreCheatMatch = userMessage.match(/^\/setscore\s+([1-9]|10)$/);
             console.log("Frontend: Cheat code match result:", cheatCodeMatch);
+            console.log("Frontend: SetScore cheat match result:", setScoreCheatMatch);
 
             // Clear input immediately
             userInput.value = "";
@@ -118,6 +120,72 @@
 
                 } catch (error) {
                     console.error('Frontend: Error processing CHEAT command:', error);
+                    const errorP = document.createElement('p');
+                    errorP.textContent = `치트 코드 처리 오류: ${error.message}`;
+                    errorP.style.color = 'red';
+                    chatBox.appendChild(errorP);
+                }
+
+            } else if (setScoreCheatMatch) {
+                console.log("Frontend: SET_SCORE CHEAT detected. Processing...");
+                const targetScore = parseInt(setScoreCheatMatch[1], 10);
+                
+                if (targetScore < 1 || targetScore > 10) {
+                    const errorP = document.createElement('p');
+                    errorP.textContent = "오류: 스트레스 점수는 1에서 10 사이의 값이어야 합니다.";
+                    errorP.style.color = 'red';
+                    chatBox.appendChild(errorP);
+                    return;
+                }
+
+                const payload = {
+                    cheat_command: "set_score",
+                    target_score: targetScore
+                };
+
+                try {
+                    const response = await fetch('/send_message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    console.log("Frontend: Received response for SET_SCORE command:", data);
+
+                    if (data.reply) {
+                        const systemMessageP = document.createElement('p');
+                        systemMessageP.innerHTML = `<strong>[시스템]</strong> ${data.reply}`;
+                        chatBox.appendChild(systemMessageP);
+                    }
+
+                    if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+                        turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
+                    }
+
+                    if (scoreDisplay && data.stress_score !== undefined) {
+                        scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
+                    }
+
+                    if (data.conversation_end === true) {
+                        chatSection.style.display = 'none';
+                        resultsSection.style.display = 'block';
+                        finalScoreValueElement.textContent = data.stress_score + "점";
+                        if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
+                        userInput.disabled = true;
+                        sendButton.disabled = true;
+                    } else {
+                        userInput.disabled = false;
+                        sendButton.disabled = false;
+                    }
+
+                } catch (error) {
+                    console.error('Frontend: Error processing SET_SCORE command:', error);
                     const errorP = document.createElement('p');
                     errorP.textContent = `치트 코드 처리 오류: ${error.message}`;
                     errorP.style.color = 'red';

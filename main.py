@@ -41,6 +41,7 @@ def handle_message():
     data = request.json
     cheat_command = data.get('cheat_command')
     target_turn_value = data.get('target_turn')
+    target_score_value = data.get('target_score')
     
     if cheat_command == 'set_turn' and target_turn_value is not None:
         try:
@@ -63,6 +64,35 @@ def handle_message():
         except ValueError as e:
             print(f"ERROR: Invalid turn number - {e}")
             return jsonify({'error': '올바른 턴 번호를 입력해주세요.'}), 400
+            
+    elif cheat_command == 'set_score':
+        print(f"DEBUG: Backend: SET_SCORE command processing branch ENTERED. Data: {data}")
+        
+        if target_score_value is None:
+            return jsonify({'error': '스트레스 점수가 지정되지 않았습니다.'}), 400
+            
+        try:
+            target_score = max(1, min(10, int(target_score_value)))
+            
+            # 턴 카운트 증가
+            turn_count = session.get('turn_count', 0) + 1
+            session['turn_count'] = turn_count
+            session.modified = True
+            
+            # 응답 데이터 구성
+            response_data = {
+                'reply': f"스트레스 점수가 임의로 {target_score}점으로 설정되었습니다 (이번 턴에만 유효).",
+                'stress_score': target_score,
+                'conversation_end': (turn_count >= 20),
+                'current_turn': turn_count,
+                'max_turns': 20
+            }
+            
+            return jsonify(response_data)
+            
+        except ValueError as e:
+            print(f"ERROR: Invalid stress score - {e}")
+            return jsonify({'error': '올바른 스트레스 점수를 입력해주세요.'}), 400
     
     # 일반 메시지 처리
     user_message = data.get('message')
