@@ -295,13 +295,17 @@
                         messageElement.classList.add('bot-message');
                         messageElement.textContent = data.reply;
                         container.appendChild(messageElement);
-                        
+
                         chatBox.appendChild(container);
                         console.log("Frontend: bot message element appended to chatBox. chatBox.innerHTML:", chatBox.innerHTML);
                     }
 
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
-                        turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴 | 점수 미변동 연속 턴: ${data.turns_no_score_change} / ${data.max_turns_no_score_change} 회`;
+                        let turnText = `진행: ${data.current_turn} / ${data.max_turns} 턴`;
+                        if (data.score_changes_count !== undefined && data.max_score_changes_limit !== undefined) {
+                            turnText += ` (점수 변경: ${data.score_changes_count} / ${data.max_score_changes_limit}회)`;
+                        }
+                        turnIndicator.textContent = turnText;
                     }
 
                     // Only show score in final results, not during conversation

@@ -115,15 +115,18 @@ def handle_message():
     if score_change_count >= MAX_SCORE_CHANGES or turn_count >= MAX_CONVERSATION_TURNS:
         conversation_end = True
         print(f"DEBUG: Conversation END condition met. ScoreChanges: {score_change_count}, Turn: {turn_count}")
-
+    
+    MAX_TOTAL_TURNS = MAX_CONVERSATION_TURNS
+    MAX_TOTAL_SCORE_CHANGES = MAX_SCORE_CHANGES
+    score_change_total_count = score_change_count
     response_data = {
         'reply': bot_reply,
         'stress_score': current_overall_score,
         'conversation_end': conversation_end,
         'current_turn': turn_count,
-        'max_turns': MAX_CONVERSATION_TURNS,
-        'score_changes': score_change_count,
-        'max_score_changes': MAX_SCORE_CHANGES
+        'max_turns': MAX_TOTAL_TURNS,
+        'score_changes_count': score_change_total_count,
+        'max_score_changes_limit': MAX_TOTAL_SCORE_CHANGES
     }
     print(f"[Response] Sending: {response_data}")
     return jsonify(response_data)
@@ -237,15 +240,19 @@ def handle_message():
     if score_change_count >= MAX_SCORE_CHANGES or turn_count >= MAX_CONVERSATION_TURNS:
         conversation_end = True
         print(f"DEBUG: Conversation END condition met. ScoreChanges: {score_change_count}, Turn: {turn_count}")
+    
+    MAX_TOTAL_TURNS = MAX_CONVERSATION_TURNS
+    MAX_TOTAL_SCORE_CHANGES = MAX_SCORE_CHANGES
+    score_change_total_count = score_change_count
 
     response_data = {
         'reply': bot_reply,
         'stress_score': current_overall_score,
         'conversation_end': conversation_end,
         'current_turn': turn_count,
-        'max_turns': MAX_CONVERSATION_TURNS,
-        'score_changes': score_change_count,
-        'max_score_changes': MAX_SCORE_CHANGES
+        'max_turns': MAX_TOTAL_TURNS,
+        'score_changes_count': score_change_count,
+        'max_score_changes_limit': MAX_TOTAL_SCORE_CHANGES
     }
     print(f"[Response] Sending: {response_data}")
     return jsonify(response_data)
