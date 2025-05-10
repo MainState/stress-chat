@@ -1,0 +1,82 @@
+# 내 Flask 채팅 애플리케이션의 대화 종료 로직을 수정하고, 관련 정보 표시 문제를 해결하고 싶어.
+
+# 새로운 대화 종료 조건:
+# 1. 총 '점수 변경' 횟수가 10번 이상 발생했을 경우 (MAX_TOTAL_SCORE_CHANGES = 10)
+# 2. 또는, 총 '대화 턴 수'가 20번을 넘어갈 경우 (MAX_TOTAL_TURNS = 20)
+# 이 두 조건 중 하나라도 만족하면 대화는 종료되고 최종 점수 화면으로 넘어가야 해.
+
+# === 1. `main.py` (또는 `app.py`) 파일 수정 ===
+
+# a. **파일 상단에 상수 정의 (또는 기존 상수 수정):**
+#    `MAX_TOTAL_SCORE_CHANGES = 10`
+#    `MAX_TOTAL_TURNS = 20`
+
+# b. **'/' (홈) 라우트 함수 수정 (세션 초기화):**
+#    - `session.pop('turns_since_last_score_change', None)` 코드가 있다면 삭제해줘 (더 이상 사용 안 함).
+#    - `session['score_change_total_count'] = 0` (총 점수 변경 횟수 초기화)를 추가/확인해줘.
+#    - `session['previous_score'] = 5.0` (또는 적절한 초기 기준 점수)는 그대로 유지하거나 추가.
+#    - `session['turn_count']`, `session['user_messages']`, `session['chat_history']` 초기화는 그대로 유지.
+
+# c. **`/send_message` 경로의 `handle_message` 함수 로직 수정:**
+#    i.  **세션 변수 가져오기:**
+#        - `turn_count = session.get('turn_count', 0) + 1` (기존과 동일)
+#        - `session['turn_count'] = turn_count`
+#        - `previous_score = session.get('previous_score', 5.0)`
+#        - `score_change_total_count = session.get('score_change_total_count', 0)`
+#        - (기존 `turns_since_last_score_change` 관련 로직은 모두 삭제)
+
+#    ii. **점수 계산 및 `previous_score` 업데이트 (기존 로직 유지):**
+#        - `current_overall_score = calculate_stress_score(session.get('user_messages', []))`
+#        - `session['previous_score'] = current_overall_score`
+
+#    iii.**총 점수 변경 횟수(`score_change_total_count`) 업데이트 로직:**
+#        - `if abs(current_overall_score - previous_score) > 0.01: # 점수 변동 감지`
+#        - `    score_change_total_count += 1`
+#        - `    session['score_change_total_count'] = score_change_total_count`
+#        - `    print(f"DEBUG: Score CHANGED! Total changes: {score_change_total_count}, New score: {current_overall_score}")`
+#        - `else:`
+#        - `    print(f"DEBUG: Score UNCHANGED. Total changes: {score_change_total_count}")`
+
+#    iv. **새로운 대화 종료 조건 판별:**
+#        - `conversation_end = False` 로 초기화.
+#        - `if score_change_total_count >= MAX_TOTAL_SCORE_CHANGES:`
+#        - `    conversation_end = True`
+#        - `    print(f"DEBUG: Conversation END - Max score changes ({MAX_TOTAL_SCORE_CHANGES}) reached.")`
+#        - `elif turn_count >= MAX_TOTAL_TURNS:`
+#        - `    conversation_end = True`
+#        - `    print(f"DEBUG: Conversation END - Max total turns ({MAX_TOTAL_TURNS}) reached.")`
+
+#    v.  **최종 응답(JSON) 구성:**
+#        - `return jsonify({`
+#        - `    'reply': bot_reply,`
+#        - `    'stress_score': current_overall_score,`
+#        - `    'conversation_end': conversation_end,`
+#        - `    'current_turn': turn_count,`
+#        - `    'max_turns': MAX_TOTAL_TURNS,`
+#        - `    'score_changes_count': score_change_total_count, # 프론트엔드 표시용 (총 점수 변경 횟수)`
+#        - `    'max_score_changes_limit': MAX_TOTAL_SCORE_CHANGES # 프론트엔드 표시용 (목표 점수 변경 횟수)`
+#        - `})`
+#        - (기존 `turns_no_score_change`와 `max_turns_no_score_change` 키는 응답에서 삭제)
+
+# === 2. 프론트엔드 JavaScript 수정 (`index.html` 내 `<script>` 또는 `static/script.js`) ===
+# `turn-indicator` (ID를 가진 요소)의 내용을 업데이트하는 부분을 다음과 같이 수정해줘.
+# 이제 "점수 미변동턴" 대신 "총 점수 변경 횟수"를 표시하거나, 턴 수만 표시해도 괜찮아.
+# 여기서는 두 가지 정보를 모두 표시하는 예시야.
+
+# a. `Workspace` 응답 처리하는 `.then(data => { ... })` 블록 안에,
+#    `turnIndicator` 요소의 `textContent`를 업데이트하는 코드를 수정해줘:
+#    ```javascript
+#    if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+#        let turnText = `진행: ${data.current_turn} / ${data.max_turns} 턴`;
+#        if (data.score_changes_count !== undefined && data.max_score_changes_limit !== undefined) {
+#            turnText += ` (점수 변경: ${data.score_changes_count} / ${data.max_score_changes_limit}회)`;
+#        }
+#        turnIndicator.textContent = turnText;
+#    }
+#    ```
+# b. `if (data.conversation_end === true)` 블록 안에서는 `turnIndicator` 내용을 "대화 종료됨" 또는 유사한 메시지로 변경하거나 숨겨도 좋아 (기존 로직 유지).
+
+# **핵심 변경 사항:**
+# - 백엔드에서 `turns_since_last_score_change` 대신 `score_change_total_count`를 세션에 기록하고 업데이트.
+# - 대화 종료 조건이 "총 점수 변경 10회 이상 또는 총 20턴 이상"으로 변경됨.
+# - 프론트엔드 턴 표시기에 "총 점수 변경 횟수"를 보여주도록 (선택적으로) 수정. "undefined / undefined" 문제는 이로써 해결될 거야.
