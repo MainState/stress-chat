@@ -1,0 +1,173 @@
+# 내 채팅 애플리케이션의 프론트엔드 JavaScript 코드 (`index.html` 내 `<script>` 태그 또는 `static/script.js` 파일에 있을 거야)를 수정하려고 해.
+# 현재 사용자가 채팅 입력창에 치트 코드(예: `/setturn 10`)를 입력해도 일반 메시지로 처리되는 심각한 버그가 있어.
+# 이 문제를 해결하기 위해, 메시지 전송을 담당하는 기존 JavaScript 함수를 아래 제공하는 새로운 `sendMessage` 함수 코드로 **완전히 대체하거나, 이 코드의 모든 로직이 정확히 반영되도록 수정**해줘.
+
+# 목표:
+# - 사용자가 `/setturn N` 형식의 치트 코드를 입력하면 이를 감지.
+# - 치트 코드일 경우, 백엔드로 `{ "cheat_command": "set_turn", "target_turn": N }` 형식의 특별한 JSON 페이로드를 전송.
+# - 일반 메시지일 경우, 기존처럼 `{ "message": "사용자 메시지" }` 형식의 JSON 페이로드를 전송.
+# - 치트 코드 입력 시에는 해당 명령어가 채팅창에 "나: /setturn N"으로 표시되지 않아야 함.
+# - 백엔드로부터의 응답을 처리하여 채팅창, 턴 표시기, 점수 표시 등을 올바르게 업데이트해야 함 (치트 코드 응답과 일반 응답 모두).
+
+# 가정:
+# - HTML에는 다음 ID를 가진 요소들이 존재함: 'user-input', 'send-button', 'chat-box', 'turn-indicator', 'score-display', 'chat-section', 'results-section', 'final-score-value', 'try-again-button'.
+# - 이 요소들에 대한 JavaScript 변수(예: `userInput`, `sendButton`, `chatBox` 등)는 스크립트 상단이나 적절한 범위에 이미 선언되어 있거나, 새로 제공되는 함수 내에서 `document.getElementById`로 가져올 수 있음.
+
+# === 아래 코드로 기존 메시지 전송 함수를 대체/수정해줘 ===
+async function sendMessage() {
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button'); // 필요하다면 선언
+    const chatBox = document.getElementById('chat-box');
+    const turnIndicator = document.getElementById('turn-indicator');
+    const scoreDisplay = document.getElementById('score-display');
+    const chatSection = document.getElementById('chat-section');
+    const resultsSection = document.getElementById('results-section');
+    const finalScoreValueElement = document.getElementById('final-score-value');
+
+    const userMessage = userInput.value.trim();
+    if (userMessage === "") {
+        return; // 빈 메시지는 무시
+    }
+
+    console.log("Frontend: User input received:", userMessage); // 디버깅 로그
+
+    const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
+    console.log("Frontend: Cheat code match result:", cheatCodeMatch); // 디버깅 로그
+
+    if (cheatCodeMatch) {
+        // === 치트 코드 처리 경로 ===
+        console.log("Frontend: CHEAT CODE detected. Processing for cheat path...");
+        userInput.value = ""; // 입력창 먼저 비우기
+
+        const targetTurn = parseInt(cheatCodeMatch[1], 10);
+        console.log("Frontend: Parsed targetTurn for cheat:", targetTurn);
+
+        const payload = {
+            cheat_command: "set_turn",
+            target_turn: targetTurn
+        };
+        console.log("Frontend: Sending CHEAT payload to backend:", payload);
+
+        try {
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Frontend: Received response for CHEAT command from backend:", data);
+
+            chatBox.innerHTML = ''; // 채팅창 내용 모두 비우기
+
+            if (data.reply) {
+                const systemMessageP = document.createElement('p');
+                systemMessageP.innerHTML = `<strong>[시스템]</strong> ${data.reply}`;
+                chatBox.appendChild(systemMessageP);
+            }
+
+            if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+                turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
+            }
+
+            if (scoreDisplay && data.stress_score !== undefined) {
+                 scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
+            }
+            
+            if (data.conversation_end === true) {
+                console.log("Frontend: CHEAT caused conversation end. Switching to results screen.");
+                if (chatSection) chatSection.style.display = 'none';
+                if (resultsSection) resultsSection.style.display = 'block';
+                if (finalScoreValueElement) finalScoreValueElement.textContent = data.stress_score + "점";
+                if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
+                if (userInput) userInput.disabled = true;
+                if (sendButton) sendButton.disabled = true; // sendButton 변수 선언 필요
+            } else {
+                if (userInput) userInput.disabled = false;
+                if (sendButton) sendButton.disabled = false; // sendButton 변수 선언 필요
+            }
+
+        } catch (error) {
+            console.error('Frontend: Error processing CHEAT command:', error);
+            const errorP = document.createElement('p');
+            errorP.textContent = `치트 코드 처리 오류: ${error.message}`;
+            errorP.style.color = 'red';
+            if (chatBox) chatBox.appendChild(errorP);
+        }
+
+    } else {
+        // === 일반 메시지 처리 경로 ===
+        console.log("Frontend: NORMAL message detected. Sending:", userMessage);
+
+        const userP = document.createElement('p');
+        userP.textContent = `나: ${userMessage}`;
+        if (chatBox) chatBox.appendChild(userP);
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+
+        userInput.value = "";
+
+        try {
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: userMessage })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Frontend: Received response for NORMAL command from backend:", data);
+
+            if (data.reply) {
+                const botP = document.createElement('p');
+                botP.textContent = `챗봇: ${data.reply}`;
+                if (chatBox) chatBox.appendChild(botP);
+            }
+
+            if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+                turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
+            }
+
+            if (scoreDisplay && data.stress_score !== undefined) {
+                scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
+            }
+
+            if (data.conversation_end === true) {
+                console.log("Frontend: NORMAL conversation ended. Switching to results screen.");
+                if (chatSection) chatSection.style.display = 'none';
+                if (resultsSection) resultsSection.style.display = 'block';
+                if (finalScoreValueElement) finalScoreValueElement.textContent = data.stress_score + "점";
+                if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
+                if (userInput) userInput.disabled = true;
+                if (sendButton) sendButton.disabled = true; // sendButton 변수 선언 필요
+            } else {
+                if (userInput) userInput.disabled = false;
+                if (sendButton) sendButton.disabled = false; // sendButton 변수 선언 필요
+            }
+
+        } catch (error) {
+            console.error('Frontend: Error processing NORMAL command:', error);
+            const errorP = document.createElement('p');
+            errorP.textContent = `오류: ${error.message}`;
+            errorP.style.color = 'red';
+            if (chatBox) chatBox.appendChild(errorP);
+        }
+    }
+    if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+# 또한, 이 새로운 `sendMessage` 함수가 '전송' 버튼의 클릭 이벤트나 입력 필드의 Enter 키 누름 이벤트에 올바르게 연결되어 있는지 확인하고, 그렇지 않다면 연결하는 코드도 추가해줘.
+# 예를 들어:
+# `const sendButton = document.getElementById('send-button');`
+# `const userInput = document.getElementById('user-input');`
+# `if (sendButton) sendButton.addEventListener('click', sendMessage);`
+# `if (userInput) userInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { sendMessage(); } });`
+# `tryAgainButton`에 대한 이벤트 리스너도 이전에 논의된 대로 (페이지 새로고침) 유지하거나 추가해줘.
