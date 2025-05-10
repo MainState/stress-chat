@@ -118,6 +118,19 @@ body {
     border-bottom-left-radius: 5px;
 }
 
+.loading-message .bot-message {
+    background-color: #e9ecef;
+    color: #6c757d;
+    font-style: italic;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
 #input-area {
     display: flex;
     gap: 10px;
