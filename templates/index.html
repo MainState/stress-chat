@@ -257,11 +257,7 @@
                         turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
                     }
 
-                    if (scoreDisplay && data.stress_score !== undefined) {
-                        scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
-                    }
-
-                    console.log("Frontend: Received data from backend:", data);
+                    console.log("DEBUG: Backend Response Data Received:", JSON.stringify(data, null, 2));
                     
                     if (data.conversation_end === true) {
                         console.log("Frontend: Conversation ended. Switching to results screen.");
@@ -269,45 +265,30 @@
                         resultsSection.style.display = 'block';
 
                         // 종합 점수 표시
-                        const stressScore = data.stress_score;
-                        const overallScore = typeof stressScore === 'object' ? 
-                            stressScore.overall_score : stressScore;
-                        finalScoreValueElement.textContent = Number(overallScore).toFixed(1) + "점";
+                        console.log("DEBUG: Setting final overall score:", data.scores.overall_score);
+                        finalScoreValueElement.textContent = data.scores.overall_score.toFixed(1) + "점";
 
                         // 카테고리별 점수 표시
                         const scoresGrid = document.querySelector('#category-scores-details .scores-grid');
                         scoresGrid.innerHTML = '';
 
                         // 카테고리별 점수가 객체 형태로 존재하는 경우
-                        if (stressScore && typeof stressScore === 'object' && stressScore.category_scores) {
-                            const categoryNames = {
-                                'negative_emotion': '부정적 감정',
-                                'positive_emotion': '긍정적 감정',
-                                'sleep_issues': '수면 문제',
-                                'workload_issues': '업무/학업 부담',
-                                'physical_symptoms': '신체적 증상',
-                                'interpersonal_stress': '대인관계 스트레스',
-                                'future_anxiety': '미래 불안',
-                                'low_self_esteem': '자존감 저하'
-                            };
-
-                            const categoryScores = stressScore.category_scores;
-                            for (const [category, score] of Object.entries(categoryScores)) {
-                                if (score !== undefined) {
-                                    const scoreItem = document.createElement('div');
-                                    scoreItem.className = 'score-item';
-                                    scoreItem.innerHTML = `
-                                        <div class="category-name">${categoryNames[category] || category}</div>
-                                        <div class="score-value">${Number(score).toFixed(1)} / 5.0</div>
-                                    `;
-                                    scoresGrid.appendChild(scoreItem);
-                                }
-                            }
+                        if (data.scores && data.scores.category_scores_display && typeof data.scores.category_scores_display === 'object') {
+                            Object.entries(data.scores.category_scores_display).forEach(([categoryName, score]) => {
+                                console.log(`DEBUG: Displaying category: ${categoryName}, Score: ${score}`);
+                                const scoreItem = document.createElement('div');
+                                scoreItem.className = 'score-item';
+                                scoreItem.innerHTML = `
+                                    <div class="category-name">${categoryName}</div>
+                                    <div class="score-value">${typeof score === 'number' ? score.toFixed(1) : 'N/A'} / 5.0</div>
+                                `;
+                                scoresGrid.appendChild(scoreItem);
+                            });
                         } else {
-                            // 카테고리별 점수가 없는 경우
+                            console.error("DEBUG: category_scores_display data is missing or not an object:", data.scores);
                             const noScoresMessage = document.createElement('div');
                             noScoresMessage.className = 'no-scores-message';
-                            noScoresMessage.textContent = '카테고리별 점수 정보가 없습니다.';
+                            noScoresMessage.textContent = '카테고리별 점수 정보를 불러오는 데 실패했습니다.';
                             scoresGrid.appendChild(noScoresMessage);
                         }
                         if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
