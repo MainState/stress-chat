@@ -113,44 +113,59 @@ KEYWORDS = {
 def calculate_stress_score(user_messages):
     """
     Calculate stress score based on keywords found in user messages.
+    Includes diminishing returns for repeated keywords.
     
     Args:
         user_messages (list): List of strings containing user messages
         
     Returns:
-        int: Final stress score (1-10 scale)
+        float: Final stress score (1.0-10.0 scale with one decimal place)
     """
     if not user_messages:
-        print("[Scoring] No user messages...")
-        return 5
+        print("[Scoring] No user messages provided.")
+        return 5.0
     
-    raw_score = 0
-    found_keywords_details = []
+    raw_score = 0.0
+    keyword_occurrence_count = {}
     
-    print(f"[Scoring] Start analyzing {len(user_messages)} messages ---")
-    
+    print(f"\n--- [Scoring] Start analyzing {len(user_messages)} messages for diminishing returns ---")
     for i, message in enumerate(user_messages):
-        print(f"[Scoring] Analyzing msg {i+1}: '{message[:50]}...'")
-        found_in_this_message = set()
+        print(f"[Scoring] Analyzing msg {i+1} for keyword counts: '{message[:50]}...'")
+        for category_keywords in KEYWORDS.values():
+            for keyword in category_keywords.keys():
+                if keyword in message:
+                    keyword_occurrence_count[keyword] = keyword_occurrence_count.get(keyword, 0) + message.count(keyword)
+
+    print(f"[Scoring] Keyword Occurrences in full history: {keyword_occurrence_count}")
+
+    for keyword, count in keyword_occurrence_count.items():
+        base_weight = 0.0
+        for category_name, category_data in KEYWORDS.items():
+            if keyword in category_data:
+                base_weight = float(category_data[keyword])
+                break
         
-        for category, keywords in KEYWORDS.items():
-            for keyword, weight in keywords.items():
-                if keyword in message and keyword not in found_in_this_message:
-                    print(f"  - Found: '{keyword}' (Cat: {category}, W: {weight})")
-                    raw_score += weight
-                    found_in_this_message.add(keyword)
-                    found_keywords_details.append({'kw': keyword, 'wt': weight, 'msg_idx': i})
+        if base_weight == 0.0:
+            continue
+
+        current_keyword_total_score = 0.0
+        diminishing_factor = 1.0
+        for i in range(count):
+            current_keyword_total_score += base_weight * diminishing_factor
+            diminishing_factor *= 0.6
+        
+        raw_score += current_keyword_total_score
+        print(f"  - Keyword '{keyword}': count={count}, base_w={base_weight}, score_after_diminishing={current_keyword_total_score:.2f}")
+
+    print(f"[Scoring] Total Raw Score (with diminishing returns): {raw_score:.2f}")
+
+    normalized_score_float = raw_score + 5.0
+    final_score_float = max(1.0, min(10.0, normalized_score_float))
+    final_score_rounded = round(final_score_float, 1)
     
-    print(f"[Scoring] Total Raw Score: {raw_score}")
-    print(f"[Scoring] Found Keywords Details: {found_keywords_details}")
+    print(f"[Scoring] Normalized Score (1.0-10.0): {final_score_rounded}\n----------------------------")
     
-    normalized_score = round(raw_score + 5)
-    final_score = max(1, min(10, normalized_score))
-    
-    print(f"[Scoring] Normalized Score (1-10): {final_score}")
-    print("-" * 50)
-    
-    return final_score
+    return final_score_rounded
 
 if __name__ == '__main__':
     print("Running scoring module self-test...")
