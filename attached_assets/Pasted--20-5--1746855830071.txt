@@ -1,0 +1,32 @@
+# 내 채팅 애플리케이션에서 20턴 대화가 끝나고 최종 결과 화면을 보여줄 때,
+# 대화 중 누적된 스트레스 점수가 아닌 항상 5점이라는 고정된 값이 표시되는 버그가 있어. 이 문제를 해결하고 싶어.
+
+# === 1. 백엔드 코드 점검 및 수정 (`main.py` 또는 `app.py`의 `handle_message` 함수) ===
+
+# `handle_message` 함수 내에서, `turn_count`가 20 이상이 되어 `conversation_end = True`로 설정되는 조건문 블록 내부를 점검해줘.
+# a. 이 블록 안에서 `calculate_stress_score(user_messages_history)` 함수를 호출하여 `stress_score`를 계산하는 부분이 **올바르게 현재까지 누적된 `user_messages_history` 전체를 사용**하고 있는지 확인해줘.
+# b. 디버깅을 위해, 최종 `jsonify(...)`로 응답을 반환하기 **바로 전**에 다음 로그를 추가해줘:
+#    `print(f"DEBUG: Backend FINAL TURN DATA: turn_count={turn_count}, conversation_end={conversation_end}, final_stress_score_to_send={stress_score}, user_messages_history_len={len(user_messages_history)}")`
+#    (여기서 `stress_score`는 최종적으로 계산되어 프론트엔드로 보내질 변수명이어야 해.)
+# c. 최종 `return jsonify(...)` 구문에서 `stress_score` 키에 **정확히 이 최종 계산된 `stress_score` 변수**가 할당되어 반환되는지 다시 한번 확인해줘.
+
+# === 2. 프론트엔드 JavaScript 코드 점검 및 수정 (HTML 파일 내 `<script>` 또는 `static/script.js`) ===
+
+# `Workspace` API 응답을 처리하는 `.then(data => { ... })` 블록 내부를 점검해줘.
+# 특히 `if (data.conversation_end === true)` 조건문 블록 안의 내용을 다음과 같이 확인하고 수정/보강해줘:
+
+# a. 조건문 블록이 시작되는 **바로 안쪽**에 다음 로그를 추가해서, 백엔드로부터 받은 데이터 전체와 특히 `stress_score` 값을 확인해줘:
+#    `console.log("Frontend: FINAL - Received data on conversation end:", data);`
+#    `console.log("Frontend: FINAL - Stress score from backend:", data.stress_score);`
+
+# b. 결과 화면의 최종 점수 표시 요소(ID: `final-score-value`로 가정)에 텍스트를 설정하는 부분을 찾아줘.
+#    이 부분이 `finalScoreValueElement.textContent = data.stress_score + "점";` 와 같이, **백엔드에서 받은 `data.stress_score`를 정확히 사용**하고 있는지 확인하고, 만약 고정된 값(예: '5점')이나 다른 변수를 사용하고 있다면 올바르게 수정해줘.
+
+# c. 혹시 채팅 중 점수를 표시하는 `score-display` 요소와 결과 화면의 `final-score-value` 요소가 혼동되어 사용되고 있지는 않은지 확인해줘.
+#    대화 종료 시에는 `final-score-value` 요소에 최종 점수가 표시되어야 해.
+
+# **핵심 목표:**
+# - 백엔드가 20번째 턴에 **정확한 누적 최종 스트레스 점수**를 프론트엔드로 보내는지 확인.
+# - 프론트엔드가 결과 화면을 표시할 때, 백엔드로부터 받은 **그 최종 스트레스 점수**를 올바르게 사용하는지 확인.
+
+# 위 사항들을 점검하고 필요한 코드를 수정해줘. 디버깅 로그는 문제 원인 파악에 매우 중요하니 꼭 포함해줘.
