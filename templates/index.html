@@ -261,20 +261,25 @@
                         scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
                     }
 
+                    console.log("Frontend: Received data from backend:", data);
+                    
                     if (data.conversation_end === true) {
-                        console.log("Frontend: FINAL - Received data on conversation end:", data);
-                        console.log("Frontend: FINAL - Stress score from backend:", data.stress_score);
-                        console.log("Frontend: NORMAL conversation ended. Switching to results screen.");
+                        console.log("Frontend: Conversation ended. Switching to results screen.");
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
-                        const score = typeof data.stress_score === 'object' ? data.stress_score.overall_score : data.stress_score;
-                        finalScoreValueElement.textContent = score + "점";
+
+                        // 종합 점수 표시
+                        const stressScore = data.stress_score;
+                        const overallScore = typeof stressScore === 'object' ? 
+                            stressScore.overall_score : stressScore;
+                        finalScoreValueElement.textContent = Number(overallScore).toFixed(1) + "점";
 
                         // 카테고리별 점수 표시
                         const scoresGrid = document.querySelector('#category-scores-details .scores-grid');
                         scoresGrid.innerHTML = '';
 
-                        if (data.stress_score.category_scores) {
+                        // 카테고리별 점수가 객체 형태로 존재하는 경우
+                        if (stressScore && typeof stressScore === 'object' && stressScore.category_scores) {
                             const categoryNames = {
                                 'negative_emotion': '부정적 감정',
                                 'positive_emotion': '긍정적 감정',
@@ -286,15 +291,24 @@
                                 'low_self_esteem': '자존감 저하'
                             };
 
-                            for (const [category, score] of Object.entries(data.stress_score.category_scores)) {
-                                const scoreItem = document.createElement('div');
-                                scoreItem.className = 'score-item';
-                                scoreItem.innerHTML = `
-                                    <div class="category-name">${categoryNames[category] || category}</div>
-                                    <div class="score-value">${score.toFixed(1)} / 5.0</div>
-                                `;
-                                scoresGrid.appendChild(scoreItem);
+                            const categoryScores = stressScore.category_scores;
+                            for (const [category, score] of Object.entries(categoryScores)) {
+                                if (score !== undefined) {
+                                    const scoreItem = document.createElement('div');
+                                    scoreItem.className = 'score-item';
+                                    scoreItem.innerHTML = `
+                                        <div class="category-name">${categoryNames[category] || category}</div>
+                                        <div class="score-value">${Number(score).toFixed(1)} / 5.0</div>
+                                    `;
+                                    scoresGrid.appendChild(scoreItem);
+                                }
                             }
+                        } else {
+                            // 카테고리별 점수가 없는 경우
+                            const noScoresMessage = document.createElement('div');
+                            noScoresMessage.className = 'no-scores-message';
+                            noScoresMessage.textContent = '카테고리별 점수 정보가 없습니다.';
+                            scoresGrid.appendChild(noScoresMessage);
                         }
                         if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
                         userInput.disabled = true;
