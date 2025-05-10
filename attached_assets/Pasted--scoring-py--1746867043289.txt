@@ -1,0 +1,122 @@
+# 내 스트레스 측정 프로그램의 `scoring.py` 파일을 수정하여, 스트레스 점수를 여러 카테고리별로 계산하고, 이를 바탕으로 최종 종합 점수를 도출하도록 하고 싶어.
+# 동일 키워드 반복 시 가중치를 점감시키는 로직과 점수를 소수점 첫째 자리까지 표현하는 것도 유지해야 해.
+
+# === 1. `KEYWORDS` 딕셔너리 구조 확인 ===
+# 현재 `KEYWORDS` 딕셔너리는 이미 카테고리별로 키워드와 가중치를 가지고 있는 형태일 거야. (예: `KEYWORDS = {"negative_emotion": {"짜증": 1.0, ...}, "workload_issues": {...}}`)
+# 이 구조를 그대로 활용할 거야. 각 카테고리 이름이 나중에 화면에 표시될 수 있으니 명확하게 유지해줘.
+# (만약 AI가 KEYWORDS도 다시 생성해야 한다면, 이전에 논의된 확장된 키워드 목록을 여기에 포함시켜서 요청해도 좋아.)
+
+# === 2. `calculate_stress_score` 함수 대폭 수정 ===
+# 기존 `calculate_stress_score` 함수를 아래 설명하는 새로운 로직으로 **완전히 대체하거나 매우 유사하게 수정**해줘.
+# 이 함수는 이제 카테고리별 점수와 종합 점수를 포함하는 딕셔너리를 반환해야 해.
+
+def calculate_stress_scores(user_messages): # 함수 이름을 변경하거나 주석으로 명시해도 좋음
+    if not user_messages:
+        print("[Scoring] No user messages provided.")
+        # 반환 형태에 맞춰 기본값 설정
+        default_category_scores = {category_name: 0.0 for category_name in KEYWORDS.keys()}
+        return {
+            "overall_score": 5.0,
+            "category_scores": default_category_scores, # 각 카테고리별 정규화된 점수 (예: 0.0~5.0)
+            "raw_category_details": { # 디버깅/분석용 원시 점수 및 키워드
+                category_name: {"score": 0.0, "keywords_found": []} for category_name in KEYWORDS.keys()
+            }
+        }
+
+    # --- 1. 전체 메시지에서 각 키워드의 총 등장 횟수 계산 ---
+    keyword_occurrence_count = {}
+    print(f"\n--- [Scoring] Start analyzing {len(user_messages)} messages for keyword counts ---")
+    for i, message in enumerate(user_messages):
+        # print(f"[Scoring] Analyzing msg {i+1} for keyword counts: '{message[:50]}...'") # 너무 길면 주석 처리
+        for category_name, keywords_with_weights in KEYWORDS.items():
+            for keyword, weight in keywords_with_weights.items():
+                if keyword in message:
+                    keyword_occurrence_count[keyword] = \
+                        keyword_occurrence_count.get(keyword, 0) + message.count(keyword)
+    print(f"[Scoring] Keyword Occurrences in full history: {keyword_occurrence_count}")
+
+    # --- 2. 카테고리별 원시 점수 계산 (점감 효과 적용) ---
+    raw_category_scores = {category_name: 0.0 for category_name in KEYWORDS.keys()}
+    raw_category_keyword_details = { # 디버깅/분석용
+        category_name: {"score": 0.0, "keywords_found": []} for category_name in KEYWORDS.keys()
+    }
+
+    print("--- [Scoring] Calculating raw scores for each category with diminishing returns ---")
+    for category_name, keywords_with_weights in KEYWORDS.items():
+        category_specific_raw_score = 0.0
+        keywords_found_in_category = []
+
+        for keyword, base_weight_float in keywords_with_weights.items():
+            count = keyword_occurrence_count.get(keyword, 0)
+            if count == 0:
+                continue
+
+            base_weight = float(base_weight_float) # 가중치 float 확인
+            current_keyword_total_score_for_category = 0.0
+            diminishing_factor = 1.0 # 첫 등장 시 100%
+
+            for i in range(count): # 해당 키워드의 총 등장 횟수만큼 반복하며 점감 적용
+                contribution = base_weight * diminishing_factor
+                current_keyword_total_score_for_category += contribution
+                diminishing_factor *= 0.6 # 다음 등장 시 이전 영향력의 60% (튜닝 가능)
+            
+            category_specific_raw_score += current_keyword_total_score_for_category
+            if count > 0 : # 키워드가 실제로 이 카테고리에 기여했을 때만 기록
+                 keywords_found_in_category.append({"keyword": keyword, "count": count, "contribution": round(current_keyword_total_score_for_category, 2)})
+            print(f"  - Cat:'{category_name}', Kw:'{keyword}', Count:{count}, BaseW:{base_weight}, DiminishedScoreContr:{current_keyword_total_score_for_category:.2f}")
+            
+        raw_category_scores[category_name] = category_specific_raw_score
+        raw_category_keyword_details[category_name]["score"] = round(category_specific_raw_score, 2)
+        raw_category_keyword_details[category_name]["keywords_found"] = keywords_found_in_category
+        
+    print(f"[Scoring] Raw Category Scores: {raw_category_scores}")
+
+    # --- 3. 종합 원시 점수 계산 ---
+    # 예시: 모든 카테고리 원시 점수의 합 (카테고리별 가중치를 둘 수도 있음)
+    overall_raw_score = sum(raw_category_scores.values())
+    print(f"[Scoring] Overall Raw Score (sum of category raw scores): {overall_raw_score:.2f}")
+
+    # --- 4. 종합 점수 정규화 (1.0 ~ 10.0) ---
+    # 이 정규화 방식은 overall_raw_score의 예상 범위에 따라 세심하게 조정해야 함
+    normalized_overall_score_float = overall_raw_score + 5.0 
+    final_overall_score_float = max(1.0, min(10.0, normalized_overall_score_float))
+    final_overall_score_rounded = round(final_overall_score_float, 1)
+    print(f"[Scoring] Final Overall Score (1.0-10.0): {final_overall_score_rounded}")
+
+    # --- 5. (선택적) 카테고리별 점수도 정규화 (예: 0.0 ~ 5.0 또는 다른 적절한 스케일) ---
+    # 각 카테고리 점수도 사용자에게 보여주기 좋은 범위로 정규화할 수 있음.
+    # 여기서는 간단히 각 카테고리별 raw_score에 따라 기여도를 표현한다고 가정하고,
+    # 실제 사용자에게 보여줄 때는 이 raw 값을 바탕으로 백분율이나 다른 형태로 변환할 수 있음.
+    # 일단은 raw_category_scores를 그대로 보내거나, 아래처럼 간단히 정규화.
+    normalized_category_scores_display = {}
+    for cat_name, cat_raw_score in raw_category_scores.items():
+        # 예시: 각 카테고리 기여도를 0-5점으로 단순 매핑 (이 부분은 많은 고민 필요)
+        # 예를 들어, 카테고리별 최대 가능 점수를 설정하고 그에 대한 비율로 표시할 수도 있음.
+        # 여기서는 간단하게 raw_score의 절대값을 참고하여, 긍정은 낮게, 부정은 높게.
+        # 이 부분은 실제 서비스에서는 훨씬 정교해야 합니다.
+        # 지금은 raw_category_scores를 바탕으로 프론트엔드에서 어떻게 보여줄지 결정하는 것이 나을 수 있습니다.
+        # 간단히 0~5점 척도로만 변환한다고 가정 (매우 단순화된 예시)
+        temp_normalized_cat_score = round(max(0.0, min(5.0, (cat_raw_score / 5.0) * 2.5 + 2.5 if category_name != "positive_emotion" else (-cat_raw_score / 3.0) * 2.5 + 2.5 )),1)
+        # positive_emotion은 점수가 음수이므로 반대로 계산
+        if category_name == "positive_emotion":
+            # 원시 점수가 -6 이면 0점, 0 이면 2.5점, +3(긍정 키워드만 있다면 발생 안함) 이면 5점.
+            # (기본 가중치가 음수이므로, 합산된 raw_score는 음수일 가능성 높음)
+            temp_normalized_cat_score = round(max(0.0, min(5.0, 2.5 - (cat_raw_score / 6.0) * 2.5 )),1) # 예: Max 부정 기여 -6을 0점으로, 0을 2.5점으로
+        else: # 다른 부정/스트레스 카테고리
+            # 원시 점수 0을 0점으로, 5를 2.5점으로, 10을 5점으로 매핑 (대략적)
+            temp_normalized_cat_score = round(max(0.0, min(5.0, (cat_raw_score / 10.0) * 5.0 )),1)
+        normalized_category_scores_display[cat_name] = temp_normalized_cat_score
+
+
+    print(f"[Scoring] Normalized Category Scores for display (example 0-5 scale): {normalized_category_scores_display}")
+    print("----------------------------------------")
+
+    return {
+        "overall_score": final_overall_score_rounded,
+        "category_scores_display": normalized_category_scores_display, # 화면 표시용 정규화된 카테고리 점수
+        "raw_category_details": raw_category_keyword_details # 각 카테고리별 원시 점수와 주요 키워드 (분석/참고용)
+    }
+
+
+# (선택 사항) 파일 끝에 있는 if __name__ == '__main__': 테스트 블록도
+# 새로운 반환 형태(딕셔너리)와 점수 계산 방식에 맞게 수정해주면 좋아.
