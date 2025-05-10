@@ -1,0 +1,37 @@
+# 제 Flask 기반 채팅 애플리케이션의 UI를 개선하고 싶습니다.
+# 현재 채팅 메시지들이 `templates/index.html` 파일 내의 `chat-box`라는 ID를 가진 `div` 안에 순차적으로 추가되고 있습니다 (아마도 `<p>` 태그를 사용해서요).
+# 이 메시지들을 사용자가 보낸 메시지와 챗봇이 보낸 메시지로 명확히 구분되도록 CSS 스타일을 적용하고, 관련 JavaScript 코드도 수정해주세요.
+
+# 목표:
+# 1. 사용자의 메시지는 채팅창 오른쪽에, 챗봇의 메시지는 왼쪽에 정렬되어 보이도록 합니다.
+# 2. 사용자와 챗봇 메시지에 서로 다른 배경색을 적용하여 시각적 구분을 줍니다.
+# 3. 각 메시지가 말풍선처럼 보이도록 모서리를 둥글게 하고, 적절한 안쪽 여백(padding)과 메시지 간 바깥 여백(margin)을 설정합니다.
+# 4. 메시지 말풍선의 최대 너비를 설정하여 너무 길어지지 않게 합니다.
+
+# 수행할 작업:
+
+# 1. **CSS 스타일 추가:**
+#    - `static` 폴더 안에 `style.css` 파일을 생성하거나 (이미 있다면 해당 파일에 추가), `templates/index.html` 파일의 `<head>` 안에 `<style>` 태그를 추가하여 다음 CSS 클래스들을 정의해주세요. (`static/style.css` 에 만들고 `index.html`에 링크하는 것을 더 선호합니다.)
+#    - `.message-container`: 각 메시지(`user-message` 또는 `bot-message`)를 감싸는 컨테이너 div에 적용될 스타일입니다. 메시지를 왼쪽 또는 오른쪽으로 정렬하는 데 사용됩니다. (Flexbox 사용 추천: `display: flex;` 후 `justify-content` 조절)
+#    - `.user-message`: 사용자가 보낸 메시지 말풍선에 적용될 스타일입니다.
+#        - 배경색: 연한 하늘색 계열 (예: `#e1f5fe`)
+#        - 오른쪽 정렬: 컨테이너(`message-container`) 내에서 오른쪽으로 정렬되도록 설정. (예: 컨테이너가 flex일 경우 `margin-left: auto;`)
+#        - 말풍선 모양: `padding: 10px; border-radius: 15px; margin-bottom: 10px; max-width: 70%; word-wrap: break-word;`
+#    - `.bot-message`: 챗봇이 보낸 메시지 말풍선에 적용될 스타일입니다.
+#        - 배경색: 연한 회색 계열 (예: `#f0f0f0`)
+#        - 왼쪽 정렬: 컨테이너(`message-container`) 내에서 왼쪽으로 정렬되도록 설정. (예: 컨테이너가 flex일 경우 `margin-right: auto;`)
+#        - 말풍선 모양: `padding: 10px; border-radius: 15px; margin-bottom: 10px; max-width: 70%; word-wrap: break-word;`
+#    - (만약 `static/style.css` 파일을 사용한다면, `templates/index.html` 파일의 `<head>` 안에 `<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">` 코드가 포함되어 있는지 확인하거나 추가해주세요.)
+
+# 2. **JavaScript 수정 (`index.html` 내 `<script>` 태그 또는 `static/script.js` 파일):**
+#    - 채팅 메시지를 `chat-box`에 추가하는 JavaScript 로직을 찾아서 수정해주세요.
+#    - 사용자 메시지를 추가할 때:
+#        a. 먼저 `div` 요소를 하나 생성하고, 여기에 `message-container` 클래스와 `user-message-container` (정렬용 추가 클래스) 클래스를 추가합니다.
+#        b. 그 다음, 실제 메시지 내용이 담길 `<p>` (또는 `div`) 요소를 생성하고, 여기에 `user-message` 클래스를 추가한 후 사용자 메시지 텍스트를 넣습니다.
+#        c. 이 메시지 내용 요소를 a에서 만든 컨테이너 `div`에 추가(append)합니다.
+#        d. 마지막으로 이 컨테이너 `div`를 `chat-box`에 추가합니다.
+#        (예시: `const container = document.createElement('div'); container.classList.add('message-container', 'user-message-container'); const p = document.createElement('p'); p.classList.add('user-message'); p.textContent = userMessage; container.appendChild(p); chatBox.appendChild(container);`)
+#    - 챗봇 메시지를 추가할 때도 위와 유사하게, 바깥 컨테이너 `div`에는 `message-container` 클래스와 `bot-message-container` 클래스를, 안쪽 메시지 내용 요소에는 `bot-message` 클래스를 추가하도록 수정해주세요.
+#    - (추가) `user-message-container` 에는 `justify-content: flex-end;` 를, `bot-message-container` 에는 `justify-content: flex-start;` 를 `message-container`의 `display: flex;` 와 함께 사용하면 메시지 박스 자체를 좌우로 붙일 수 있습니다. 이 스타일을 CSS의 `.message-container.user-message-container` 와 `.message-container.bot-message-container` 에 각각 정의해주세요.
+
+# 위 지시사항을 바탕으로 코드를 수정하거나 생성해주고, 어떤 파일의 어느 부분을 수정했는지 알려주면 좋겠습니다.
