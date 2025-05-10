@@ -1,0 +1,51 @@
+# 내 Flask 채팅 애플리케이션의 전체적인 UI 레이아웃과 폰트를 더 세련되게 만들고 싶습니다.
+# `templates/index.html` 파일과 `static/style.css` 파일을 수정해주세요.
+# (`static/style.css` 파일이 없다면 새로 만들고 `index.html`에 링크해주세요.)
+
+# === 1. HTML 구조 수정 (`templates/index.html`) ===
+
+# a. `<head>` 태그 안에 다음 내용을 추가하거나 확인해주세요:
+#    i.  깔끔한 웹 폰트 사용을 위해 Google Fonts 링크를 추가해주세요. (예: 'Noto Sans KR' 또는 'Inter' 또는 'Roboto'. 'Noto Sans KR'을 우선적으로 고려해주세요. 없다면 다른 두 폰트 중 하나로)
+#        - 예시: `<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">`
+#    ii. `static/style.css` 파일이 올바르게 링크되어 있는지 확인하고, 없다면 링크 태그를 추가해주세요:
+#        `<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">`
+
+# b. `<body>` 태그 바로 안쪽에, 페이지의 모든 주요 콘텐츠(제목, `chat-section`, `results-section` 등)를 감싸는 **메인 컨테이너 `div`를 추가**해주세요. 이 `div`의 ID는 `app-container`로 설정해주세요.
+#    - 기존의 `<h1>` (애플리케이션 제목), `chat-section` div, `results-section` div 등이 모두 이 `app-container` div의 자식 요소가 되도록 구조를 변경해주세요.
+
+# === 2. CSS 스타일 적용 (`static/style.css`) ===
+
+# a. **`body` 전체 스타일:**
+#    - `font-family`: 위에서 선택한 웹 폰트를 기본으로 사용하고, 대체 폰트로 `sans-serif`를 지정해주세요. (예: `'Noto Sans KR', sans-serif;`)
+#    - `background-color`: 페이지 전체 배경색으로 연한 중립적인 색상을 지정해주세요 (예: `#f4f6f9` 또는 `#e9ecef`).
+#    - `color`: 기본 텍스트 색상을 지정해주세요 (예: `#333`).
+#    - `margin: 0;` 과 `padding: 0;`으로 브라우저 기본 여백을 제거해주세요.
+#    - `line-height: 1.6;` 정도로 기본 줄 간격을 설정해주세요.
+
+# b. **`#app-container` 스타일 (메인 콘텐츠 영역):**
+#    - `max-width: 800px;` (또는 적절한 최대 너비)를 설정하여 너무 넓어지지 않게 해주세요.
+#    - `margin: 30px auto;` (상하 여백 30px, 좌우 자동 마진으로 중앙 정렬)
+#    - `padding: 20px;` (안쪽 여백)
+#    - `background-color: #ffffff;` (콘텐츠 영역 배경은 흰색)
+#    - `border-radius: 8px;` (부드러운 모서리)
+#    - `box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);` (은은한 그림자 효과)
+
+# c. **제목 스타일 (`#app-container h1` 또는 페이지 내 메인 제목):**
+#    - `text-align: center;` (가운데 정렬)
+#    - `color: #2c3e50;` (제목 색상 예시)
+#    - 적절한 `font-size`와 `margin-bottom`을 설정해주세요.
+
+# d. **버튼 기본 스타일 (전역 `button` 태그 또는 공통 클래스 `.btn`):**
+#    - `padding: 10px 18px;`
+#    - `border: none;`
+#    - `border-radius: 5px;`
+#    - `background-color: #007bff;` (예시 기본 버튼 색상 - 파란색 계열)
+#    - `color: white;`
+#    - `font-size: 1rem;` (또는 `16px`)
+#    - `cursor: pointer;`
+#    - `transition: background-color 0.2s ease-in-out;` (호버 효과를 위한 부드러운 전환)
+#    - `button:hover` 상태에서는 `background-color`를 조금 더 어둡거나 밝게 변경해주세요 (예: `#0056b3`).
+#    - (만약 특정 버튼 ID - `send-button`, `try-again-button` - 에만 적용하고 싶다면, 각 ID에 이 스타일을 적용해줘도 됩니다. 하지만 일관성을 위해 공통 스타일을 우선 적용하는 것이 좋습니다.)
+
+# 위 지시사항을 바탕으로 코드를 수정하거나 생성해주고, 어떤 파일의 어느 부분을 수정했는지 알려주면 좋겠습니다.
+# CSS는 `static/style.css` 파일에 작성하는 것을 기본으로 해주세요.
