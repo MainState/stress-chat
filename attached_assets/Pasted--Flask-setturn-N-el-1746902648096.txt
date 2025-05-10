@@ -1,0 +1,78 @@
+# 내 Flask 채팅 애플리케이션에 두 가지 새로운 치트 코드 기능을 추가하고 싶어.
+# 기존에 `/setturn N` 치트 코드 처리 로직이 있다면, 그 로직에 이어서 `else if` 형태로 추가해줘.
+
+# === 1. 프론트엔드 JavaScript 수정 (`index.html` 내 `<script>` 또는 `static/script.js`) ===
+
+# 메시지 전송 함수 (`sendMessage` 또는 유사한 이름) 내부, 기존 치트 코드 감지 로직 다음에 새로운 치트 코드 감지 로직을 추가해줘:
+
+# a. **`/endchat` 치트 코드 감지 및 처리:**
+#    - 사용자가 `/endchat`을 입력했는지 확인하는 `else if (userMessage.toLowerCase() === '/endchat')` 조건 추가.
+#    - 조건 만족 시:
+#        i.  `console.log("Frontend: END_CHAT cheat detected.");` 로그 추가.
+#        ii. 채팅 입력창(`userInput`) 비우기.
+#        iii. 백엔드로 `Workspace` POST 요청 전송. 요청 본문: `JSON.stringify({ cheat_command: "end_chat" })`.
+#        iv. 백엔드 응답(data)을 받으면, `data.conversation_end`가 `true`일 것이므로, 기존의 대화 종료 시 화면 전환 로직 (채팅 섹션 숨기고 결과 섹션 보여주기, 최종 점수 표시 등)을 실행.
+#           (이때 `data.stress_score`, `data.current_turn` 등을 사용하여 결과 화면 업데이트)
+
+# b. **`/adjscore S` 치트 코드 감지 및 처리:**
+#    - 사용자가 `/adjscore [+-숫자]` 형식(예: `/adjscore +1.5`, `/adjscore -0.7`)으로 입력했는지 확인하는 `else if` 조건 추가.
+#      정규표현식 예시: `const adjScoreMatch = userMessage.match(/^\/adjscore\s*([+-]?\d*\.?\d+)$/);`
+#    - `adjScoreMatch`가 존재하고, 두 번째 그룹(`adjScoreMatch[1]`)이 유효한 숫자로 변환될 수 있다면:
+#        i.  `console.log("Frontend: ADJ_SCORE cheat detected:", adjScoreMatch);` 로그 추가.
+#        ii. 채팅 입력창(`userInput`) 비우기.
+#        iii. 추출된 숫자 값 (`scoreAdjustment = parseFloat(adjScoreMatch[1])`)을 사용하여 백엔드로 `Workspace` POST 요청 전송.
+#            요청 본문: `JSON.stringify({ cheat_command: "adjust_score", adjustment_value: scoreAdjustment })`.
+#        iv. 백엔드 응답(data)을 받으면, 채팅창에 시스템 메시지(`data.reply`) 표시, 턴 표시기(`turn-indicator`) 업데이트, **변경된 스트레스 점수(`data.stress_score`)를 `score-display`에 업데이트.**
+#        v.  만약 `data.conversation_end`가 `true`이면, 마찬가지로 화면 전환 로직 실행.
+
+# c. 위 두 치트 코드에 해당하지 않으면 기존의 일반 메시지 처리 로직 실행.
+
+# === 2. 백엔드 코드 수정 (`main.py` 또는 `app.py`의 `handle_message` 함수) ===
+
+# `/send_message` 라우트의 `handle_message` 함수 내부, 기존 `/setturn N` 치트 코드 처리 로직 다음에 새로운 치트 코드 처리 로직을 `elif`로 추가해줘:
+
+# a. **`/endchat` 치트 코드 처리:**
+#    - `elif data.get('cheat_command') == "end_chat":` 조건 추가.
+#    - 조건 만족 시:
+#        i.  `print(f"DEBUG: Backend: END_CHAT command received.")` 로그 추가.
+#        ii. `turn_count`를 현재 최대 턴 수(`MAX_TOTAL_TURNS` - 현재 20으로 가정)로 강제 설정하거나, `conversation_end` 플래그를 바로 `True`로 설정. (턴 카운트도 증가시키는 것이 일관성 있을 수 있음)
+#            `turn_count = session.get('turn_count', 0) + 1` # 턴은 정상적으로 증가
+#            `session['turn_count'] = turn_count`
+#            `conversation_end = True` # 즉시 종료
+#        iii.현재까지 누적된 `user_messages_history`를 바탕으로 `current_overall_score = calculate_stress_score(...)` 호출하여 최종 점수 계산.
+#        iv. `score_change_total_count = session.get('score_change_total_count', 0)` (그대로 사용)
+#        v.  프론트엔드에 반환할 JSON 응답 구성:
+#            - `reply`: "대화가 관리자에 의해 종료되었습니다. 최종 점수를 확인하세요."
+#            - `stress_score`: `current_overall_score`
+#            - `conversation_end`: `True`
+#            - `current_turn`: `turn_count`
+#            - `max_turns`: `MAX_TOTAL_TURNS`
+#            - `score_changes_count`, `max_score_changes_limit` 등 기존 정보 포함.
+#        vi. 이 JSON 응답을 `jsonify`로 반환.
+
+# b. **`/adjscore S` 치트 코드 처리:**
+#    - `elif data.get('cheat_command') == "adjust_score":` 조건 추가.
+#    - 조건 만족 시:
+#        i.  `print(f"DEBUG: Backend: ADJ_SCORE command received. Data: {data}")` 로그 추가.
+#        ii. `adjustment_value = data.get('adjustment_value')`로 전달받은 값 가져오기 (float으로 변환 필요).
+#        iii.만약 `adjustment_value`가 유효한 숫자라면:
+#            - `turn_count` 정상적으로 1 증가 및 세션 저장.
+#            - `previous_score = session.get('previous_score', 5.0)`
+#            - `current_overall_score = calculate_stress_score(session.get('user_messages', []))` # 현재까지의 실제 점수 계산
+#            - `adjusted_score = current_overall_score + adjustment_value` # 조정값 적용
+#            - `adjusted_score = round(max(1.0, min(10.0, adjusted_score)), 1)` # 1.0~10.0 범위로 제한 및 반올림
+#            - `session['previous_score'] = adjusted_score` # 조정된 점수를 이전 점수로 저장 (다음 턴 비교용)
+#            - **`score_change_total_count`를 1 증가시키고 세션에 저장.** (점수가 인위적으로 변경되었으므로 '변경'으로 간주)
+#            - `conversation_end` 조건 확인 (새로운 `score_change_total_count` 및 `turn_count` 기준).
+#            - 프론트엔드에 반환할 JSON 응답 구성:
+#                - `reply`: f"점수가 {adjustment_value:+.1f} 만큼 조정되어 현재 {adjusted_score}점입니다."
+#                - `stress_score`: `adjusted_score`
+#                - `conversation_end`, `current_turn`, `max_turns`, `score_changes_count` 등 포함.
+#            - 이 JSON 응답을 `jsonify`로 반환.
+#        iv. `adjustment_value`가 유효하지 않으면 오류 응답 반환.
+
+# c. 위 두 치트 코드에 해당하지 않으면 기존의 일반 메시지 처리 로직 실행.
+
+# **중요:**
+# - 모든 세션 변수(`turn_count`, `score_change_total_count`, `previous_score`, `user_messages`, `chat_history`)가 각 로직 흐름에 맞게 올바르게 업데이트되고 사용되는지 확인해줘.
+# - 프론트엔드와 백엔드가 주고받는 JSON 데이터의 키 이름을 일관되게 사용해야 해.
