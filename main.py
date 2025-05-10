@@ -163,6 +163,66 @@ def handle_message():
             print(f"ERROR: Invalid turn number - {e}")
             return jsonify({'error': '올바른 턴 번호를 입력해주세요.'}), 400
 
+    elif cheat_command == "end_chat":
+        print(f"DEBUG: Backend: END_CHAT command received.")
+        turn_count = session.get('turn_count', 0) + 1
+        session['turn_count'] = turn_count
+        conversation_end = True
+        
+        current_stress_result = calculate_stress_score(session.get('user_messages', []))
+        current_overall_score = current_stress_result['overall_score']
+        score_change_total_count = session.get('score_change_count', 0)
+        
+        response_data = {
+            'reply': "대화가 관리자에 의해 종료되었습니다. 최종 점수를 확인하세요.",
+            'stress_score': current_overall_score,
+            'conversation_end': True,
+            'current_turn': turn_count,
+            'max_turns': ABSOLUTE_MAX_TURNS,
+            'score_changes_count': score_change_total_count,
+            'max_score_changes_limit': MAX_SCORE_CHANGES
+        }
+        
+        return jsonify(response_data)
+        
+    elif cheat_command == "adjust_score":
+        print(f"DEBUG: Backend: ADJ_SCORE command received. Data: {data}")
+        adjustment_value = data.get('adjustment_value')
+        
+        try:
+            adjustment_value = float(adjustment_value)
+            turn_count = session.get('turn_count', 0) + 1
+            session['turn_count'] = turn_count
+            
+            previous_score = session.get('previous_score', 5.0)
+            current_stress_result = calculate_stress_score(session.get('user_messages', []))
+            current_overall_score = current_stress_result['overall_score']
+            
+            adjusted_score = current_overall_score + adjustment_value
+            adjusted_score = round(max(1.0, min(10.0, adjusted_score)), 1)
+            
+            session['previous_score'] = adjusted_score
+            
+            score_change_count = session.get('score_change_count', 0) + 1
+            session['score_change_count'] = score_change_count
+            
+            conversation_end = score_change_count >= MAX_SCORE_CHANGES or turn_count >= MAX_CONVERSATION_TURNS
+            
+            response_data = {
+                'reply': f"점수가 {adjustment_value:+.1f} 만큼 조정되어 현재 {adjusted_score}점입니다.",
+                'stress_score': adjusted_score,
+                'conversation_end': conversation_end,
+                'current_turn': turn_count,
+                'max_turns': ABSOLUTE_MAX_TURNS,
+                'score_changes_count': score_change_count,
+                'max_score_changes_limit': MAX_SCORE_CHANGES
+            }
+            
+            return jsonify(response_data)
+            
+        except (ValueError, TypeError):
+            return jsonify({'error': '올바른 점수 조정값을 입력해주세요.'}), 400
+            
     elif cheat_command == 'set_score':
         print(f"DEBUG: Backend: SET_SCORE command processing branch ENTERED. Data: {data}")
 

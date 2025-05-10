@@ -113,7 +113,91 @@
                 }
             }
 
-            if (cheatCodeMatch) {
+            if (userMessage.toLowerCase() === '/endchat') {
+                console.log("Frontend: END_CHAT cheat detected.");
+                userInput.value = "";
+                
+                try {
+                    const response = await fetch('/send_message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ cheat_command: "end_chat" })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    
+                    if (data.conversation_end === true) {
+                        chatSection.style.display = 'none';
+                        resultsSection.style.display = 'block';
+                        const finalScore = typeof data.stress_score === 'object' ? 
+                            (data.stress_score.overall_score || 5.0) : 
+                            data.stress_score;
+                        finalScoreValueElement.textContent = finalScore.toFixed(1) + "점";
+                        if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
+                        userInput.disabled = true;
+                        sendButton.disabled = true;
+                    }
+                } catch (error) {
+                    console.error('Frontend: Error processing END_CHAT command:', error);
+                    const errorP = document.createElement('p');
+                    errorP.textContent = `치트 코드 처리 오류: ${error.message}`;
+                    errorP.style.color = 'red';
+                    chatBox.appendChild(errorP);
+                }
+            } else if (const adjScoreMatch = userMessage.match(/^\/adjscore\s*([+-]?\d*\.?\d+)$/)) {
+                console.log("Frontend: ADJ_SCORE cheat detected:", adjScoreMatch);
+                userInput.value = "";
+                
+                const scoreAdjustment = parseFloat(adjScoreMatch[1]);
+                
+                try {
+                    const response = await fetch('/send_message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            cheat_command: "adjust_score", 
+                            adjustment_value: scoreAdjustment 
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    
+                    if (data.reply) {
+                        const systemMessageP = document.createElement('p');
+                        systemMessageP.innerHTML = `<strong>[시스템]</strong> ${data.reply}`;
+                        chatBox.appendChild(systemMessageP);
+                    }
+
+                    if (data.conversation_end === true) {
+                        chatSection.style.display = 'none';
+                        resultsSection.style.display = 'block';
+                        const finalScore = typeof data.stress_score === 'object' ? 
+                            (data.stress_score.overall_score || 5.0) : 
+                            data.stress_score;
+                        finalScoreValueElement.textContent = finalScore.toFixed(1) + "점";
+                        if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
+                        userInput.disabled = true;
+                        sendButton.disabled = true;
+                    }
+
+                } catch (error) {
+                    console.error('Frontend: Error processing ADJ_SCORE command:', error);
+                    const errorP = document.createElement('p');
+                    errorP.textContent = `치트 코드 처리 오류: ${error.message}`;
+                    errorP.style.color = 'red';
+                    chatBox.appendChild(errorP);
+                }
+            } else if (cheatCodeMatch) {
                 console.log("Frontend: CHEAT CODE detected. Processing for cheat path...");
 
                 const targetTurn = parseInt(cheatCodeMatch[1], 10);
