@@ -1,0 +1,116 @@
+# 내 Flask 채팅 애플리케이션의 스트레스 평가 로직과 대화 흐름을 크게 변경하려고 해.
+# 목표는 챗봇이 미리 정의된 5가지 스트레스 카테고리에 대해 순차적으로 질문하고,
+# 각 사용자 답변은 해당 질문 카테고리의 점수만 변경하도록 하는 거야.
+# 모든 카테고리 점수는 5.0점으로 시작하고 소수점 한 자리까지 표현해.
+# 최종적으로 20턴의 대화가 끝나면 모든 카테고리 점수의 평균을 내어 종합 스트레스 점수를 결과 화면에 보여줄 거야.
+
+# === 0. 사용할 스트레스 카테고리 정의 ===
+# (이 카테고리 이름들은 코드 전체에서 일관되게 사용될 거야)
+# CATEGORY_ORDER = ["정서적 어려움", "업무 및 학업 부담", "대인 관계 갈등 및 어려움", "신체적 증상 및 건강 문제", "긍정적 자원 및 대처"]
+
+# === 1. `scoring.py` 파일 수정 ===
+
+# a. `KEYWORDS` 딕셔너리를 다음 5가지 카테고리와 각 카테고리별 예시 키워드/가중치로 업데이트하거나 새로 정의해줘. (가중치는 float, 긍정 자원은 음수 가중치)
+#    (이전에 제공했던 5가지 카테고리 및 키워드 예시를 여기에 포함시키거나, AI에게 적절히 생성해달라고 요청)
+#    예시:
+#    KEYWORDS = {
+#        "정서적 어려움": {"불안": 1.5, "우울": 2.0, "힘들다": 1.0, ...},
+#        "업무 및 학업 부담": {"야근": 1.5, "마감": 2.0, ...},
+#        "대인 관계 갈등 및 어려움": {"싸웠어": 1.5, "외로워": 1.0, ...},
+#        "신체적 증상 및 건강 문제": {"못잤어": 2.0, "두통": 1.0, ...},
+#        "긍정적 자원 및 대처": {"괜찮아": -1.0, "운동했어": -0.5, ...}
+#    }
+
+# b. `calculate_stress_score` 함수를 (또는 새로 만들어서) `update_category_score` 와 같은 이름으로 변경하고, 다음 기능을 하도록 수정해줘:
+#    - 인자: `category_name` (문자열), `user_message` (문자열), `current_category_score` (float, 해당 카테고리의 현재 점수)
+#    - 로직:
+#        i.  `user_message`에서 `KEYWORDS[category_name]`에 해당하는 키워드들을 찾아서 점수를 계산해줘. (이전에 구현했던 '동일 키워드 반복 시 가중치 점감' 로직을 여기에도 적용)
+#        ii. 계산된 변화량(`delta_score`, float)을 `current_category_score`에 더해서 새로운 카테고리 점수를 만들어줘.
+#        iii.새로운 카테고리 점수는 0.0점에서 10.0점 사이로 제한(clamp)하고, 소수점 첫째 자리까지 반올림해줘.
+#        iv. 업데이트된 카테고리 점수(float)를 반환해줘.
+#    - 디버깅용 print문은 유지하거나 추가해줘.
+
+# === 2. `main.py` (또는 `app.py`) 파일 수정 ===
+
+# a. **파일 상단에 카테고리 순서 정의:**
+#    `CATEGORY_ORDER = ["정서적 어려움", "업무 및 학업 부담", "대인 관계 갈등 및 어려움", "신체적 증상 및 건강 문제", "긍정적 자원 및 대처"]`
+#    `NUM_CATEGORIES = len(CATEGORY_ORDER)`
+#    `TURNS_PER_CATEGORY = 20 // NUM_CATEGORIES` (20턴을 5개 카테고리에 배분, 예: 각 4턴)
+
+# b. **'/' (홈) 라우트 함수 수정 (세션 초기화):**
+#    - `session.pop('turn_count', None)`
+#    - `session.pop('user_messages', None)` (이건 이제 사용 안 할 수도 있음, 또는 카테고리별 메시지 저장으로 변경)
+#    - `session.pop('chat_history', None)`
+#    - `session['category_scores'] = {category: 5.0 for category in CATEGORY_ORDER}` (모든 카테고리 점수를 5.0으로 초기화)
+#    - `session['current_category_index'] = 0` (첫 번째 카테고리부터 시작)
+
+# c. **`/send_message` 경로의 `handle_message` 함수 대폭 수정:**
+#    i.  **턴 카운터 및 현재 카테고리 결정:**
+#        - `turn_count = session.get('turn_count', 0) + 1`
+#        - `session['turn_count'] = turn_count`
+#        - `current_category_index = session.get('current_category_index', 0)`
+#        - `current_category_name = CATEGORY_ORDER[current_category_index]`
+#        - `print(f"DEBUG: Turn {turn_count}, Current Category: {current_category_name}")`
+
+#    ii. **AI API 호출을 위한 시스템 프롬프트 동적 구성 (핵심!):**
+#        - 시스템 프롬프트 내용을 현재 `current_category_name`에 맞춰서 AI가 해당 카테고리에 대한 질문을 하도록 유도해야 해.
+#          예시: `system_prompt_content = f"너는 사용자와 대화하는 챗봇이야. 현재 대화 주제는 '{current_category_name}' 관련 스트레스야. 이 주제에 대해 사용자가 자신의 경험이나 생각을 이야기하도록 자연스럽고 개방적인 질문을 해줘. 질문으로 답변을 마무리해야 해."`
+#          (이전에 만들었던 상세한 시스템 프롬프트 내용에 이 '현재 카테고리' 정보를 잘 녹여줘.)
+#        - `messages_for_api` 구성 시 이 동적 시스템 프롬프트를 사용. (이전 대화 기록도 포함)
+
+#    iii. **사용자 메시지 받고 AI 응답 생성 (기존 로직 활용):**
+#         - `user_message = data.get('message')`
+#         - (AI API 호출해서 `bot_reply` 받기)
+#         - `chat_history` 업데이트 및 세션 저장
+
+#    iv. **현재 카테고리 점수 업데이트:**
+#         - `category_scores = session.get('category_scores', {cat: 5.0 for cat in CATEGORY_ORDER})`
+#         - `current_score_for_category = category_scores.get(current_category_name, 5.0)`
+#         - `updated_score = update_category_score(current_category_name, user_message, current_score_for_category)` (scoring.py의 함수 호출)
+#         - `category_scores[current_category_name] = updated_score`
+#         - `session['category_scores'] = category_scores`
+#         - `print(f"DEBUG: Updated scores: {session['category_scores']}")`
+
+#    v.  **다음 카테고리로 전환 로직:**
+#        - 만약 `turn_count % TURNS_PER_CATEGORY == 0` 이고 `turn_count < 20` 이면 (즉, 현재 카테고리 할당 턴이 끝나고 아직 전체 대화가 안 끝났다면):
+#          `session['current_category_index'] = (current_category_index + 1) % NUM_CATEGORIES`
+#          (다음 카테고리로 순환, 만약 모든 카테고리를 한 번씩만 다루려면 다른 로직 필요)
+
+#    vi. **대화 종료 및 최종 점수 계산:**
+#        - `conversation_end = (turn_count >= 20)`
+#        - `final_overall_score = 0.0`
+#        - `if conversation_end:`
+#            `all_category_scores = session.get('category_scores', {}).values()`
+#            `if all_category_scores and len(all_category_scores) > 0:`
+#                `final_overall_score = round(sum(all_category_scores) / len(all_category_scores), 1)`
+#            `else:`
+#                `final_overall_score = 5.0 # 기본값`
+#            `print(f"DEBUG: Final overall average score: {final_overall_score}")`
+
+#    vii. **JSON 응답 구성:**
+#         - `reply`: `bot_reply`
+#         - `category_scores`: `session['category_scores']` (모든 카테고리의 현재 점수들)
+#         - `overall_score`: (선택적) 대화 중에는 표시 안 하거나, `conversation_end`가 True일 때만 `final_overall_score` 전달. 지금은 `conversation_end` True일때만 전달하는 것으로.
+#         - `current_category_name`: `current_category_name` (프론트에서 참고용)
+#         - `conversation_end`, `current_turn`, `max_turns` 등 기존 정보
+
+# === 3. 프론트엔드 JavaScript 수정 (HTML 파일 내 `<script>` 또는 `static/script.js`) ===
+
+# a. **채팅 중 카테고리별 점수 표시 (기존 `score-display` 활용 또는 새로운 요소 추가):**
+#    - 백엔드에서 받은 `data.category_scores` 객체를 순회하며 각 카테고리와 점수를 화면에 표시해줘.
+#    - 예: `scoreDisplay.innerHTML = ''; Object.entries(data.category_scores).forEach(([cat, scr]) => { scoreDisplay.innerHTML += \`<p>${cat}: ${scr.toFixed(1)}</p>\`; });`
+#    - (채팅 중에는 종합 점수는 표시하지 않음)
+
+# b. **최종 결과 화면 (`if (data.conversation_end === true)` 블록 내부) 수정:**
+#    - `finalScoreValueElement`에 `data.overall_score` (백엔드가 이 이름으로 최종 평균 점수를 보내줬다면)를 표시.
+#    - `categoryScoresDetailsElement`에는 `data.category_scores`를 사용하여 각 카테고리별 최종 점수를 상세히 표시.
+
+# **핵심:**
+# - 백엔드는 현재 대화 턴과 카테고리를 관리하며, AI에게 해당 카테고리 관련 질문을 하도록 유도.
+# - `scoring.py`는 특정 메시지가 특정 카테고리 점수에만 영향을 주도록 수정.
+# - 세션에 카테고리별 점수를 각각 저장하고 업데이트.
+# - 최종 점수는 모든 카테고리 점수의 평균으로 계산.
+# - 프론트엔드는 대화 중에 실시간으로 (또는 매 턴마다) 업데이트되는 모든 카테고리 점수를 보여주고, 종료 시 종합 평균 점수를 보여줌.
+
+# 이 작업은 복잡하니, 각 파일별로 나눠서 AI에게 요청하거나, AI가 생성한 코드를 면밀히 검토하고 단계별로 테스트해야 할 거야.
+# 특히 백엔드의 `handle_message` 함수 로직이 매우 중요해.
