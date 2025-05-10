@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -26,15 +27,11 @@
         <div id="results-section" style="display: none;">
             <h2>최종 스트레스 평가 결과</h2>
             <p id="final-score-value"></p>
-            <div id="category-scores-details" class="category-scores">
-                <h3>카테고리별 세부 점수</h3>
-                <div class="scores-grid"></div>
-            </div>
             <p class="disclaimer">본 점수는 참고용이며 의학적 진단을 대체할 수 없습니다.<br>전문적인 상담이 필요하시다면 전문가와 상담하시기 바랍니다.</p>
             <button id="try-again-button">처음부터 다시 시작하기</button>
         </div>
     </div>
-
+    
     <script>
         const chatSection = document.getElementById('chat-section');
         const resultsSection = document.getElementById('results-section');
@@ -101,7 +98,7 @@
                     if (scoreDisplay && data.stress_score !== undefined) {
                         scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
                     }
-
+                    
                     if (data.conversation_end === true) {
                         console.log("Frontend: CHEAT caused conversation end. Switching to results screen.");
                         chatSection.style.display = 'none';
@@ -126,7 +123,7 @@
             } else if (setScoreCheatMatch) {
                 console.log("Frontend: SET_SCORE CHEAT detected. Processing...");
                 const targetScore = parseInt(setScoreCheatMatch[1], 10);
-
+                
                 if (targetScore < 1 || targetScore > 10) {
                     const errorP = document.createElement('p');
                     errorP.textContent = "오류: 스트레스 점수는 1에서 10 사이의 값이어야 합니다.";
@@ -165,41 +162,14 @@
                         turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
                     }
 
+                    if (scoreDisplay && data.stress_score !== undefined) {
+                        scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
+                    }
+
                     if (data.conversation_end === true) {
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
-
-                        // 전체 점수 표시
-                        const overallScore = data.stress_score.overall_score || data.stress_score;
-                        finalScoreValueElement.textContent = overallScore + "점";
-
-                        // 카테고리별 점수 표시
-                        const scoresGrid = document.querySelector('#category-scores-details .scores-grid');
-                        scoresGrid.innerHTML = '';
-
-                        if (data.stress_score.category_scores) {
-                            const categoryNames = {
-                                'negative_emotion': '부정적 감정',
-                                'positive_emotion': '긍정적 감정',
-                                'sleep_issues': '수면 문제',
-                                'workload_issues': '업무/학업 부담',
-                                'physical_symptoms': '신체적 증상',
-                                'interpersonal_stress': '대인관계 스트레스',
-                                'future_anxiety': '미래 불안',
-                                'low_self_esteem': '자존감 저하'
-                            };
-
-                            for (const [category, score] of Object.entries(data.stress_score.category_scores)) {
-                                const scoreItem = document.createElement('div');
-                                scoreItem.className = 'score-item';
-                                scoreItem.innerHTML = `
-                                    <div class="category-name">${categoryNames[category] || category}</div>
-                                    <div class="score-value">${score.toFixed(1)} / 5.0</div>
-                                `;
-                                scoresGrid.appendChild(scoreItem);
-                            }
-                        }
-
+                        finalScoreValueElement.textContent = data.stress_score + "점";
                         if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
                         userInput.disabled = true;
                         sendButton.disabled = true;
@@ -257,40 +227,17 @@
                         turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
                     }
 
-                    console.log("DEBUG: Backend Response Data Received:", JSON.stringify(data, null, 2));
-                    
+                    if (scoreDisplay && data.stress_score !== undefined) {
+                        scoreDisplay.textContent = `현재 추정 스트레스 점수: ${data.stress_score} / 10`;
+                    }
+
                     if (data.conversation_end === true) {
-                        console.log("Frontend: Conversation ended. Switching to results screen.");
+                        console.log("Frontend: FINAL - Received data on conversation end:", data);
+                        console.log("Frontend: FINAL - Stress score from backend:", data.stress_score);
+                        console.log("Frontend: NORMAL conversation ended. Switching to results screen.");
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
-
-                        // 종합 점수 표시
-                        console.log("DEBUG: Setting final overall score:", data.scores.overall_score);
-                        finalScoreValueElement.textContent = data.scores.overall_score.toFixed(1) + "점";
-
-                        // 카테고리별 점수 표시
-                        const scoresGrid = document.querySelector('#category-scores-details .scores-grid');
-                        scoresGrid.innerHTML = '';
-
-                        // 카테고리별 점수가 객체 형태로 존재하는 경우
-                        if (data.scores && data.scores.category_scores_display && typeof data.scores.category_scores_display === 'object') {
-                            Object.entries(data.scores.category_scores_display).forEach(([categoryName, score]) => {
-                                console.log(`DEBUG: Displaying category: ${categoryName}, Score: ${score}`);
-                                const scoreItem = document.createElement('div');
-                                scoreItem.className = 'score-item';
-                                scoreItem.innerHTML = `
-                                    <div class="category-name">${categoryName}</div>
-                                    <div class="score-value">${typeof score === 'number' ? score.toFixed(1) : 'N/A'} / 5.0</div>
-                                `;
-                                scoresGrid.appendChild(scoreItem);
-                            });
-                        } else {
-                            console.error("DEBUG: category_scores_display data is missing or not an object:", data.scores);
-                            const noScoresMessage = document.createElement('div');
-                            noScoresMessage.className = 'no-scores-message';
-                            noScoresMessage.textContent = '카테고리별 점수 정보를 불러오는 데 실패했습니다.';
-                            scoresGrid.appendChild(noScoresMessage);
-                        }
+                        finalScoreValueElement.textContent = data.stress_score + "점";
                         if (turnIndicator) turnIndicator.textContent = "대화 종료됨";
                         userInput.disabled = true;
                         sendButton.disabled = true;
