@@ -1,0 +1,48 @@
+# 내 채팅 애플리케이션의 채팅 화면에서 현재 진행 턴 수가 "n/25회"로 표시되고 있어.
+# 실제 최대 대화 턴 수 제한은 20회이므로, 이 표시를 "n/20회"로 수정하고 싶어.
+# 이 문제를 해결하기 위해 백엔드 Python 코드와 프론트엔드 JavaScript 코드를 모두 점검하고 수정해줘.
+
+# === 1. 백엔드 코드 수정 (`main.py` 또는 `app.py` 파일) ===
+
+# a. 파일 상단(또는 적절한 위치)에 정의된 `ABSOLUTE_MAX_TURNS` 상수가 **정확히 `20`으로 설정되어 있는지 확인**하고, 아니라면 수정해줘.
+#    예시: `ABSOLUTE_MAX_TURNS = 20`
+
+# b. `/send_message` 경로의 `handle_message` 함수 내부를 확인해줘:
+#    - 함수 마지막 부분의 `return jsonify(...)` 에서 프론트엔드로 보내는 JSON 응답 객체를 구성할 때,
+#    - `max_turns` 라는 키의 값으로 **위에서 정의한 `ABSOLUTE_MAX_TURNS` 상수(즉, 20)가 정확히 전달**되고 있는지 확인하고, 아니라면 수정해줘.
+#      예시:
+#      ```python
+#      # ... (함수 로직) ...
+#      return jsonify({
+#          # ... (다른 키들) ...
+#          'max_turns': ABSOLUTE_MAX_TURNS, # 이 부분이 20으로 설정된 상수를 사용하는지 확인
+#          # ... (다른 키들) ...
+#      })
+#      ```
+#    - 디버깅을 위해, `return jsonify(...)` 바로 **이전 줄**에 다음 `print` 문을 추가해서 실제로 보내는 `max_turns` 값을 확인해줘:
+#      `print(f"DEBUG: Backend sending max_turns: {ABSOLUTE_MAX_TURNS}")` (또는 해당 변수명)
+
+# === 2. 프론트엔드 JavaScript 코드 수정 (`index.html` 내 `<script>` 태그 또는 `static/script.js` 파일) ===
+
+# `Workspace` API 응답(data)을 받아 `turn-indicator` (ID를 가진 요소)의 내용을 업데이트하는 부분을 찾아줘.
+# a. 이 로직에서 최대 턴 수를 표시할 때, **백엔드로부터 받은 `data.max_turns` 값을 사용**하고 있는지 확인하고, 만약 하드코딩된 숫자(예: 25)를 사용하고 있다면 `data.max_turns`를 사용하도록 수정해줘.
+#    예시:
+#    ```javascript
+#    // const turnIndicator = document.getElementById('turn-indicator'); // 이미 선언되어 있다고 가정
+#    // .then(data => { ...
+#        if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+#            let turnText = `진행: ${data.current_turn} / ${data.max_turns} 턴`; // data.max_turns 사용 확인!
+#            if (data.score_changes_count !== undefined && data.max_score_changes_limit !== undefined) {
+#                turnText += ` (점수 변경: ${data.score_changes_count} / ${data.max_score_changes_limit}회)`;
+#            }
+#            turnIndicator.textContent = turnText;
+#        }
+#    // ... })
+#    ```
+# b. 디버깅을 위해, `data.max_turns` 값을 `console.log`로 출력하는 코드를 추가해줘.
+#    `console.log("Frontend: Received max_turns from backend:", data.max_turns);`
+#    (위 `turnIndicator.textContent` 업데이트 코드 바로 이전에 추가)
+
+# **핵심 목표:**
+# - 백엔드는 항상 `max_turns` 키에 정확한 최대 턴 수(20)를 담아 프론트엔드에 전달한다.
+# - 프론트엔드는 `turn-indicator`를 업데이트할 때, 백엔드로부터 받은 `data.max_turns` 값을 사용하여 "n/20회" 형식으로 표시한다.
