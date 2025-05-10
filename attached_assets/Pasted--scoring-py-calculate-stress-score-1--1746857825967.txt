@@ -1,0 +1,82 @@
+# 내 스트레스 측정 프로그램의 `scoring.py` 파일에 있는 `calculate_stress_score` 함수를 개선하려고 해.
+# 목표는 다음과 같아:
+# 1. 최종 점수를 소수점 첫째 자리까지 표현 (예: 7.5점).
+# 2. 사용자가 동일한 부정적 키워드를 반복해서 입력했을 때 점수가 과도하게 빠르게 오르는 것을 방지하기 위해, 키워드 반복 시 가중치를 점감시키는 로직을 추가.
+
+# 기존 `scoring.py` 파일의 `KEYWORDS` 딕셔너리는 그대로 사용하거나, 필요하다면 가중치를 float 형태로 유지하도록 해줘.
+# 핵심은 아래 제공하는 새로운 `calculate_stress_score` 함수 로직으로 기존 함수를 **완전히 대체**하는 거야.
+# 디버깅을 위한 print문도 포함되어 있으니 그대로 유지해줘.
+
+# === `scoring.py` 파일에 적용할 새로운 `calculate_stress_score` 함수 코드 ===
+# (기존 calculate_stress_score 함수를 아래 코드로 교체해줘)
+
+import math # math 모듈 import 확인
+
+# KEYWORDS 딕셔너리는 이미 파일 상단에 정의되어 있다고 가정한다. (이전 답변의 KEYWORDS 예시 사용)
+# 예시:
+# KEYWORDS = {
+#    "negative_emotion": {"짜증": 1.0, "힘들다": 1.0, ...},
+#    "positive_emotion": {"괜찮아": -1.0, "좋아": -1.0, ...},
+#    ... (나머지 카테고리와 키워드, 가중치는 float으로)
+# }
+
+def calculate_stress_score(user_messages):
+    if not user_messages:
+        print("[Scoring] No user messages provided.")
+        return 5.0 # float 반환
+
+    raw_score = 0.0 # float으로 초기화
+    
+    # 전체 대화에서 각 키워드가 몇 번 등장했는지 카운트
+    keyword_occurrence_count = {} 
+    print(f"\n--- [Scoring] Start analyzing {len(user_messages)} messages for diminishing returns ---")
+    for i, message in enumerate(user_messages):
+        print(f"[Scoring] Analyzing msg {i+1} for keyword counts: '{message[:50]}...'")
+        for category_keywords in KEYWORDS.values(): # KEYWORDS 딕셔너리 사용
+            for keyword in category_keywords.keys():
+                if keyword in message:
+                    # 메시지 내에서 해당 키워드가 등장한 횟수를 누적
+                    keyword_occurrence_count[keyword] = keyword_occurrence_count.get(keyword, 0) + message.count(keyword)
+
+    print(f"[Scoring] Keyword Occurrences in full history: {keyword_occurrence_count}")
+
+    # 계산된 빈도를 바탕으로 가중치를 적용하되, 반복 시 가중치 감소
+    for keyword, count in keyword_occurrence_count.items():
+        base_weight = 0.0
+        # KEYWORDS 딕셔너리에서 해당 키워드의 기본 가중치 찾기
+        for category_name, category_data in KEYWORDS.items(): # KEYWORDS 딕셔너리 사용
+            if keyword in category_data:
+                base_weight = float(category_data[keyword]) # 가중치를 float으로 확실히
+                break
+        
+        if base_weight == 0.0:
+            continue
+
+        current_keyword_total_score = 0.0
+        diminishing_factor = 1.0 # 첫 등장 시 100%
+        for i in range(count):
+            current_keyword_total_score += base_weight * diminishing_factor
+            diminishing_factor *= 0.6 # 다음 등장 시 이전 영향력의 60%만 반영 (이 값은 튜닝 가능)
+        
+        raw_score += current_keyword_total_score
+        print(f"  - Keyword '{keyword}': count={count}, base_w={base_weight}, score_after_diminishing={current_keyword_total_score:.2f}")
+
+    print(f"[Scoring] Total Raw Score (with diminishing returns): {raw_score:.2f}")
+
+    # 점수 정규화 (1.0 ~ 10.0 범위, 소수점 한 자리)
+    # 간단한 오프셋 및 클램핑 방식 (float으로 처리)
+    normalized_score_float = raw_score + 5.0 
+    final_score_float = max(1.0, min(10.0, normalized_score_float))
+    
+    final_score_rounded = round(final_score_float, 1) # 소수점 첫째 자리까지 반올림
+    print(f"[Scoring] Normalized Score (1.0-10.0): {final_score_rounded}\n----------------------------")
+
+    return final_score_rounded
+
+# (선택 사항) 만약 KEYWORDS 딕셔너리도 함께 AI에게 다시 정의해달라고 하고 싶다면,
+# 이전에 논의했던 확장된 KEYWORDS 딕셔너리 내용을 여기에 포함시켜서
+# "파일 상단의 KEYWORDS 딕셔너리도 다음 내용으로 업데이트해줘:" 라고 추가 지시할 수 있어.
+# 지금은 calculate_stress_score 함수 교체에만 집중할게.
+
+# (선택 사항) 파일 끝에 있는 if __name__ == '__main__': 테스트 블록도
+# 새로운 점수 계산 방식(float 반환)에 맞게 예상 결과를 조정하거나 로그를 확인하도록 수정해주면 좋아.
