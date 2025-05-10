@@ -1,4 +1,3 @@
-
 import os
 from openai import OpenAI
 from flask import Flask, render_template, request, jsonify, session
@@ -41,7 +40,7 @@ def home():
 @app.route('/send_message', methods=['POST'])
 def handle_message():
     print("--- handle_message START ---")
-    
+
     # 세션 변수 가져오기
     turn_count = session.get('turn_count', 0) + 1
     session['turn_count'] = turn_count
@@ -49,7 +48,7 @@ def handle_message():
     previous_score = session.get('previous_score', 5.0)
     user_messages_history = session.get('user_messages', [])
     chat_history_for_api = session.get('chat_history', [])
-    
+
     print(f"DEBUG: Turn {turn_count}, PrevScore: {previous_score}, ScoreChanges: {score_change_count}")
 
     # 치트 코드 처리
@@ -70,11 +69,11 @@ def handle_message():
         messages_for_api = [
             {"role": "system", "content": "너는 사용자가 편안하게 자신의 생각과 감정을 탐색하도록 돕는 '마음 길잡이' 챗봇이야.\n너의 핵심 임무는 약 20턴 내외의 대화를 통해 사용자가 최근 겪고 있는 스트레스에 대해 **스스로 하고 싶은 이야기**를 충분히 풀어놓고 정리할 수 있도록 **안전하고 수용적인 대화 공간을 제공하며, 부드럽게 질문을 던지는 것**이다.\n\n**가장 중요한 원칙: 너의 질문은 사용자의 답변을 특정 방향으로 유도하거나 너의 추측을 확인하려 해서는 안 된다.**\n사용자가 자발적으로 자신의 경험과 감정을 표현하도록 이끄는 **매우 개방적인 질문**을 사용해야 한다.\n예를 들어, \"그래서 많이 슬프셨겠네요?\" 와 같은 단정적인 공감이나 유도 질문 대신, \"그 경험이 어떠셨는지 조금 더 자세히 말씀해주실 수 있나요?\" 또는 \"그때 어떤 생각이나 감정들이 주로 드셨어요?\" 와 같이 사용자의 생각과 느낌 자체에 초점을 맞춰 질문하라."}
         ]
-        
+
         history_limit = 6
         messages_for_api.extend(chat_history_for_api[-history_limit:])
         messages_for_api.append({"role": "user", "content": user_message})
-        
+
         try:
             chat_completion = client.chat.completions.create(
                 model="gpt-4-turbo-preview",
@@ -82,12 +81,12 @@ def handle_message():
             )
             bot_reply = chat_completion.choices[0].message.content
             print(f"DEBUG: bot_reply generated: {bot_reply[:50]}...")
-            
+
             # 대화 기록 업데이트
             chat_history_for_api.append({"role": "user", "content": user_message})
             chat_history_for_api.append({"role": "assistant", "content": bot_reply})
             session['chat_history'] = chat_history_for_api
-            
+
         except Exception as e:
             print(f"[Error] OpenAI API error: {e}")
             bot_reply = "죄송합니다. AI 응답 생성 중 오류가 발생했습니다."
@@ -128,13 +127,13 @@ def handle_message():
     }
     print(f"[Response] Sending: {response_data}")
     return jsonify(response_data)
-    
+
     # 치트 코드 처리
     data = request.json
     cheat_command = data.get('cheat_command')
     target_turn_value = data.get('target_turn')
     target_score_value = data.get('target_score')
-    
+
     if cheat_command == 'set_turn' and target_turn_value is not None:
         try:
             target_turn = max(1, int(target_turn_value))
@@ -142,7 +141,7 @@ def handle_message():
             session['user_messages'] = []
             session['chat_history'] = []
             session.modified = True
-            
+
             print(f"CHEAT: Turn set to effectively start at {target_turn}.")
             response_data = {
                 'reply': f"대화 상태가 {target_turn}번째 턴으로 설정되었습니다. 다음 메시지를 입력해주세요.",
@@ -154,20 +153,20 @@ def handle_message():
                 'max_score_changes': MAX_SCORE_CHANGES
             }
             return jsonify(response_data)
-            
+
         except ValueError as e:
             print(f"ERROR: Invalid turn number - {e}")
             return jsonify({'error': '올바른 턴 번호를 입력해주세요.'}), 400
-            
+
     elif cheat_command == 'set_score':
         print(f"DEBUG: Backend: SET_SCORE command processing branch ENTERED. Data: {data}")
-        
+
         if target_score_value is None:
             return jsonify({'error': '스트레스 점수가 지정되지 않았습니다.'}), 400
-            
+
         try:
             target_score = max(1, min(10, int(target_score_value)))
-            
+
             response_data = {
                 'reply': f"스트레스 점수가 임의로 {target_score}점으로 설정되었습니다 (이번 턴에만 유효).",
                 'stress_score': target_score,
@@ -177,9 +176,9 @@ def handle_message():
                 'score_changes': score_change_count,
                 'max_score_changes': MAX_SCORE_CHANGES
             }
-            
+
             return jsonify(response_data)
-            
+
         except ValueError as e:
             print(f"ERROR: Invalid stress score - {e}")
             return jsonify({'error': '올바른 스트레스 점수를 입력해주세요.'}), 400
@@ -211,22 +210,22 @@ def handle_message():
         messages_for_api = [
             {"role": "system", "content": "너는 사용자가 편안하게 자신의 생각과 감정을 탐색하도록 돕는 '마음 길잡이' 챗봇이야.\n너의 핵심 임무는 약 20턴 내외의 대화를 통해 사용자가 최근 겪고 있는 스트레스에 대해 **스스로 하고 싶은 이야기**를 충분히 풀어놓고 정리할 수 있도록 **안전하고 수용적인 대화 공간을 제공하며, 부드럽게 질문을 던지는 것**이다.\n\n**가장 중요한 원칙: 너의 질문은 사용자의 답변을 특정 방향으로 유도하거나 너의 추측을 확인하려 해서는 안 된다.**\n사용자가 자발적으로 자신의 경험과 감정을 표현하도록 이끄는 **매우 개방적인 질문**을 사용해야 한다.\n예를 들어, \"그래서 많이 슬프셨겠네요?\" 와 같은 단정적인 공감이나 유도 질문 대신, \"그 경험이 어떠셨는지 조금 더 자세히 말씀해주실 수 있나요?\" 또는 \"그때 어떤 생각이나 감정들이 주로 드셨어요?\" 와 같이 사용자의 생각과 느낌 자체에 초점을 맞춰 질문하라."}
         ]
-        
+
         history_limit = 6
         messages_for_api.extend(chat_history_for_api[-history_limit:])
         messages_for_api.append({"role": "user", "content": user_message})
-        
+
         try:
             chat_completion = client.chat.completions.create(
                 model="gpt-4-turbo-preview",
                 messages=messages_for_api
             )
             bot_reply = chat_completion.choices[0].message.content
-            
+
             chat_history_for_api.append({"role": "user", "content": user_message})
             chat_history_for_api.append({"role": "assistant", "content": bot_reply})
             session['chat_history'] = chat_history_for_api
-            
+
         except Exception as e:
             print(f"[Error] OpenAI API error: {e}")
             bot_reply = "죄송합니다. AI 응답 생성 중 오류가 발생했습니다."

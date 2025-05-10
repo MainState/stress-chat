@@ -301,7 +301,7 @@
                     }
 
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
-                        turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴 | 점수 변동: ${data.score_changes || 0} / ${data.max_score_changes || 10} 회`;
+                        turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴 | 점수 미변동 연속 턴: ${data.turns_no_score_change} / ${data.max_turns_no_score_change} 회`;
                     }
 
                     // Only show score in final results, not during conversation
