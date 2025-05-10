@@ -194,3 +194,7 @@ body {
 #try-again-button:hover {
     background-color: #1976D2;
 }
+
+#score-display {
+    display: none;
+}

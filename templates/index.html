@@ -148,13 +148,7 @@
                         turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
                     }
 
-                    if (scoreDisplay && data.stress_score !== undefined) {
-                        const score = typeof data.stress_score === 'object' ? 
-                            (data.stress_score.overall_score || 5.0) : 
-                            data.stress_score;
-                        scoreDisplay.textContent = `현재 추정 스트레스 점수: ${score.toFixed(1)} / 10`;
-                    }
-
+                    // Only show score in final results, not during conversation
                     if (data.conversation_end === true) {
                         console.log("Frontend: CHEAT caused conversation end. Switching to results screen.");
                         chatSection.style.display = 'none';
@@ -221,13 +215,7 @@
                         turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
                     }
 
-                    if (scoreDisplay && data.stress_score !== undefined) {
-                        const score = typeof data.stress_score === 'object' ? 
-                            (data.stress_score.overall_score || 5.0) : 
-                            data.stress_score;
-                        scoreDisplay.textContent = `현재 추정 스트레스 점수: ${score.toFixed(1)} / 10`;
-                    }
-
+                    // Only show score in final results, not during conversation
                     if (data.conversation_end === true) {
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
@@ -262,7 +250,7 @@
                 container.appendChild(messageElement);
                 chatBox.appendChild(container);
                 chatBox.scrollTop = chatBox.scrollHeight;
-                
+
                 addLoadingIndicator();
 
                 try {
@@ -296,13 +284,7 @@
                         turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
                     }
 
-                    if (scoreDisplay && data.stress_score !== undefined) {
-                        const score = typeof data.stress_score === 'object' ? 
-                            (data.stress_score.overall_score || 5.0) : 
-                            data.stress_score;
-                        scoreDisplay.textContent = `현재 추정 스트레스 점수: ${score.toFixed(1)} / 10`;
-                    }
-
+                    // Only show score in final results, not during conversation
                     if (data.conversation_end === true) {
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
@@ -336,6 +318,9 @@
                 sendMessage();
             }
         });
+
+        // Hide the score display element initially
+        document.getElementById('score-display').style.display = 'none';
     </script>
 </body>
 </html>
