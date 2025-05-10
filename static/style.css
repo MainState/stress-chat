@@ -196,6 +196,43 @@ button:disabled {
     margin: 2rem 0;
 }
 
+.category-scores {
+    margin: 2rem 0;
+    text-align: left;
+}
+
+.category-scores h3 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+}
+
+.scores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 0 1rem;
+}
+
+.score-item {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.score-item .category-name {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.score-item .score-value {
+    font-size: 1.2rem;
+    color: #2c3e50;
+    font-weight: 700;
+}
+
 .disclaimer {
     color: #6c757d;
     font-style: italic;
