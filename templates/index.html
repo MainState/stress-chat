@@ -272,7 +272,17 @@
                     console.log("Frontend: Received response for NORMAL command from backend:", data);
                     console.log("DEBUG: Backend Response Data Received:", JSON.stringify(data, null, 2));
 
-                    if (data.reply) {
+                    console.log("Frontend: Received data for AI reply display:", JSON.stringify(data, null, 2));
+                    console.log("Frontend: AI reply content to display:", data.reply);
+
+                    const chatBox = document.getElementById('chat-box');
+                    console.log("Frontend: chatBox element reference:", chatBox);
+                    if (!chatBox) {
+                        console.error("Frontend: CRITICAL - chat-box element not found!");
+                        return;
+                    }
+
+                    if (data.reply && data.reply.trim() !== "") {
                         const container = document.createElement('div');
                         container.classList.add('message-container', 'bot-message-container');
 
@@ -285,6 +295,9 @@
                         messageElement.classList.add('bot-message');
                         messageElement.textContent = data.reply;
                         container.appendChild(messageElement);
+                        
+                        chatBox.appendChild(container);
+                        console.log("Frontend: bot message element appended to chatBox. chatBox.innerHTML:", chatBox.innerHTML);
                     }
 
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
