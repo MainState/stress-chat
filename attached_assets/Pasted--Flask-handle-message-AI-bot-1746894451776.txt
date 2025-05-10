@@ -1,0 +1,47 @@
+# 내 Flask 채팅 애플리케이션의 `handle_message` 함수에 버그가 있어.
+# 사용자의 메시지로 인해 스트레스 점수에 변동이 없을 경우, AI 챗봇의 응답(`bot_reply`)이 생성되지 않거나 프론트엔드로 전달되지 않는 문제가 발생해.
+# 점수 변동 여부와 관계없이, 사용자가 메시지를 보내면 AI는 항상 응답을 생성하고 반환해야 해.
+# 이 문제를 해결하도록 `handle_message` 함수의 로직 순서를 점검하고 수정해줘.
+
+# 가정:
+# - `handle_message` 함수 내에는 사용자 메시지를 받고, 턴 카운터를 관리하고,
+#   OpenAI API를 호출하여 `bot_reply`를 받고, `calculate_stress_score`를 호출하여 `current_overall_score`를 얻고,
+#   `previous_score`와 비교하여 `score_change_count`를 업데이트하고,
+#   `conversation_end` 플래그를 설정한 뒤, 최종적으로 `jsonify`로 여러 정보를 반환하는 로직이 포함되어 있음.
+# - OpenAI 클라이언트(`client`), `openai_enabled` 플래그 등은 이미 적절히 설정되어 있음.
+
+# === `handle_message` 함수 내부 로직 순서 점검 및 수정 요청 ===
+
+# 1. **AI API 호출 및 `bot_reply` 생성 로직 위치 확인 및 수정:**
+#    - **가장 중요:** `client.chat.completions.create(...)`를 사용하여 OpenAI API를 호출하고 `bot_reply`를 얻는 코드 블록이,
+#      **`current_overall_score`와 `previous_score`를 비교하여 `score_change_count`를 업데이트하는 로직보다 반드시 먼저 실행**되도록 해줘.
+#    - 즉, `bot_reply`는 점수 변동 여부를 알기 *전에* 이미 생성되어 있어야 해.
+#    - 이 API 호출은 `openai_enabled`가 `True`일 때만 실행되어야 하며, `try...except`로 오류 처리가 되어 있어야 해. (기존 로직 유지)
+
+# 2. **로직 실행 순서 제안:**
+#    `handle_message` 함수 내의 주요 로직이 대략 다음과 같은 순서로 실행되도록 코드를 구성/수정해줘:
+#    a. 사용자 메시지(`user_message`) 수신.
+#    b. 턴 카운터(`turn_count`) 업데이트 및 세션 저장. (디버깅 로그 포함)
+#    c. **AI API 호출을 위한 메시지 목록(`messages_for_api`) 구성.** (시스템 프롬프트, 이전 대화 기록(`chat_history` 세션 변수 사용), 현재 `user_message` 포함)
+#    d. **OpenAI API 호출하여 `bot_reply` 생성.** (`try...except` 구문 사용)
+#    e. **전체 대화 기록(`chat_history`) 업데이트:** 현재 `user_message`와 방금 받은 `bot_reply`를 `chat_history` 세션 변수에 추가하고 저장.
+#    f. **점수 계산용 사용자 메시지 기록(`user_messages`) 업데이트:** 현재 `user_message`를 `user_messages` 세션 변수에 추가하고 저장.
+#    g. **스트레스 점수 계산:** `current_overall_score = calculate_stress_score(session.get('user_messages', []))` 호출.
+#    h. **점수 변동 감지 및 `score_change_count` 업데이트:**
+#       - `previous_score = session.get('previous_score', 5.0)`
+#       - `if abs(current_overall_score - previous_score) > 0.01:` 조건으로 점수 변동 확인.
+#       - 변동 시 `score_change_count = session.get('score_change_count', 0) + 1` 및 `session['score_change_count']` 업데이트.
+#       - `print(f"DEBUG: Score CHANGED! ...")` 또는 `print(f"DEBUG: Score NOT changed...")` 로그 추가.
+#    i. **`previous_score` 업데이트:** `session['previous_score'] = current_overall_score`
+#    j. **대화 종료 조건(`conversation_end`) 판별:** `score_change_count` 또는 `turn_count` 기준.
+#    k. **최종 JSON 응답 반환:** `reply` (항상 `bot_reply` 사용), `stress_score` (항상 `current_overall_score` 사용), `conversation_end`, `current_turn` 등 모든 관련 정보 포함.
+
+# 3. **디버깅 로그 추가:**
+#    - AI API 호출 직후 `bot_reply` 변수의 내용(일부)을 출력하는 로그 추가 (예: `print(f"DEBUG: bot_reply generated: {bot_reply[:50]}...")`).
+#    - 점수 변동 여부를 판단하는 `if`문 전후로 `current_overall_score`와 `previous_score` 값을 출력하는 로그 추가.
+
+# **핵심 목표:**
+# - 사용자의 모든 메시지에 대해 AI 응답(`bot_reply`)이 **항상 생성**되어야 한다 (단, `openai_enabled`가 True일 때).
+# - AI 응답 생성 로직이 점수 변동을 감지하는 로직의 결과에 영향을 받지 않도록 완전히 분리한다.
+
+# 위 지시사항을 바탕으로 `handle_message` 함수를 수정해주고, 주요 변경 지점을 알려줘.
