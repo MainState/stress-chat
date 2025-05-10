@@ -273,11 +273,16 @@
                     if (data.reply) {
                         const container = document.createElement('div');
                         container.classList.add('message-container', 'bot-message-container');
+
+                        const avatar = document.createElement('div');
+                        avatar.classList.add('chatbot-avatar');
+                        avatar.innerHTML = '🤖';
+                        container.appendChild(avatar);
+
                         const messageElement = document.createElement('div');
                         messageElement.classList.add('bot-message');
                         messageElement.textContent = data.reply;
                         container.appendChild(messageElement);
-                        chatBox.appendChild(container);
                     }
 
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
