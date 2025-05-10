@@ -1,0 +1,74 @@
+# 내 Flask 채팅 애플리케이션의 대화 종료 로직을 수정하려고 해.
+# 현재는 점수 변동 횟수(score_change_count) 또는 최대 턴 수(예: 25턴)로 종료되는데,
+# 새로운 조건은 다음과 같아:
+# 1. 스트레스 점수에 변동이 없이 연속으로 10턴 이상 대화가 진행된 경우.
+# 2. 또는, 총 대화 턴 수가 20턴을 초과한 경우.
+# 이 두 조건 중 하나라도 만족하면 대화를 종료하고 최종 점수 화면으로 넘어가야 해.
+
+# === 1. `main.py` (또는 `app.py`) 파일 상단에 상수 정의 (또는 기존 상수 수정) ===
+# MAX_CONSECUTIVE_NO_SCORE_CHANGE_TURNS = 10
+# ABSOLUTE_MAX_TURNS = 20
+
+# === 2. '/' (홈) 라우트 함수 수정 (세션 초기화) ===
+# 기존 세션 초기화 로직에 다음을 추가/수정해줘:
+#   a. `session['score_change_count']` 대신 `session['turns_since_last_score_change'] = 0` 로 변경 또는 추가 (점수 변동 없는 연속 턴 카운트).
+#   b. `session['previous_score'] = 5.0` (또는 다른 적절한 초기 기준 점수)는 그대로 유지하거나 추가.
+#   (기존의 `turn_count`, `user_messages`, `chat_history` 초기화는 그대로 유지)
+
+# === 3. `/send_message` 경로의 `handle_message` 함수 로직 대폭 수정 ===
+
+# a. **함수 시작 부분에서 세션 변수 가져오기 및 `turn_count` 업데이트:**
+#    - `turn_count = session.get('turn_count', 0) + 1`
+#    - `session['turn_count'] = turn_count`
+#    - `previous_score = session.get('previous_score', 5.0)`
+#    - `turns_since_last_score_change = session.get('turns_since_last_score_change', 0)`
+#    - (기존 `user_messages_history` 및 `chat_history_for_api` 로드는 유지)
+#    - `print(f"DEBUG: Turn {turn_count}, PrevScore: {previous_score}, TurnsSinceLastScoreChange: {turns_since_last_score_change}")`
+
+# b. **사용자 메시지 처리, AI 응답, 대화/메시지 기록 업데이트 (기존 로직 대부분 유지):**
+#    - `user_message` 받고, `user_messages_history`에 추가 및 세션 저장.
+#    - AI API 호출해서 `bot_reply` 받기.
+#    - `chat_history`에 현재 대화(사용자+AI) 추가 및 세션 저장.
+
+# c. **스트레스 점수 계산 (기존 로직 유지):**
+#    - `current_overall_score = calculate_stress_score(session.get('user_messages', []))`
+
+# d. **`turns_since_last_score_change` 업데이트 로직 (새로운 핵심 로직):**
+#    - `if abs(current_overall_score - previous_score) > 0.01: # 점수 변동 감지 (소수점 고려)`
+#    - `    turns_since_last_score_change = 0 # 점수가 변했으므로 카운터 초기화`
+#    - `    print(f"DEBUG: Score CHANGED! From {previous_score} to {current_overall_score}. Resetting no_change_counter.")`
+#    - `else: # 점수 변동 없음`
+#    - `    turns_since_last_score_change += 1`
+#    - `    print(f"DEBUG: Score UNCHANGED. Current no_change_counter: {turns_since_last_score_change}")`
+#    - `session['turns_since_last_score_change'] = turns_since_last_score_change`
+#    - `session['previous_score'] = current_overall_score` # 다음 비교를 위해 현재 점수를 이전 점수로 저장
+
+# e. **새로운 대화 종료 조건 판별:**
+#    - `conversation_end = False` 로 초기화.
+#    - `if turns_since_last_score_change >= MAX_CONSECUTIVE_NO_SCORE_CHANGE_TURNS:`
+#    - `    conversation_end = True`
+#    - `    print(f"DEBUG: Conversation END - No score change for {MAX_CONSECUTIVE_NO_SCORE_CHANGE_TURNS} turns.")`
+#    - `elif turn_count >= ABSOLUTE_MAX_TURNS:`
+#    - `    conversation_end = True`
+#    - `    print(f"DEBUG: Conversation END - Absolute max turns ({ABSOLUTE_MAX_TURNS}) reached.")`
+#    - (만약 종료되었다면, 최종 점수는 `current_overall_score`를 사용)
+
+# f. **최종 응답(JSON) 구성:**
+#    - `return jsonify({`
+#    - `    'reply': bot_reply,`
+#    - `    'stress_score': current_overall_score,`
+#    - `    'conversation_end': conversation_end,`
+#    - `    'current_turn': turn_count,`
+#    - `    'max_turns': ABSOLUTE_MAX_TURNS, # 프론트엔드 턴 표시에 사용될 최대 턴 수`
+#    - `    'turns_no_score_change': turns_since_last_score_change, # (선택) 디버깅 또는 프론트엔드 표시용`
+#    - `    'max_turns_no_score_change': MAX_CONSECUTIVE_NO_SCORE_CHANGE_TURNS # (선택) 프론트엔드 표시용`
+#    - `})`
+
+# === 4. 프론트엔드 JavaScript 수정 (`index.html` 내 `<script>` 또는 `static/script.js`) - (선택 사항) ===
+# - `turn-indicator`에 기존의 "현재 진행: X / Y 턴" 외에, "점수 미변동 연속 턴: Z / 10회" 정보를 `data.turns_no_score_change`와 `data.max_turns_no_score_change`를 사용하여 함께 표시하도록 수정해도 좋아. (AI가 판단해서 추가하거나, 내가 나중에 직접 수정할 수 있도록 제안만 해줘도 돼.)
+
+# **핵심 변경 사항:**
+# - 세션에 `turns_since_last_score_change`를 추가하여 점수 변동이 없는 연속 턴 수를 추적.
+# - 점수가 변경되면 `turns_since_last_score_change`를 0으로 리셋.
+# - 점수가 변경되지 않으면 `turns_since_last_score_change`를 1 증가.
+# - 대화 종료 조건이 위 두 가지 새로운 조건(연속 10턴 점수 미변동 또는 총 20턴 초과)으로 변경됨.
