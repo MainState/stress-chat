@@ -1,0 +1,61 @@
+# 내 Flask 채팅 애플리케이션에 새로운 '치트 코드' 기능을 추가하고 싶어.
+# 사용자가 채팅창에 `/setscore S` (S는 1에서 10 사이의 숫자)를 입력하면,
+# 현재 턴의 스트레스 점수를 S로 임의 설정(화면에 표시)하고, 턴은 정상적으로 1 증가하도록 하는 기능이야.
+# 이 기능은 기존의 `/setturn N` 치트 코드와는 별개로 작동해야 해.
+
+# === 1. 프론트엔드 JavaScript 수정 (`index.html` 내 `<script>` 또는 `static/script.js`) ===
+
+# 기존 메시지 전송 함수 (`sendMessage` 또는 유사한 이름의 함수) 내부를 수정해줘:
+
+# a. 기존의 `/setturn N` 치트 코드 감지 로직 (`if (cheatCodeMatch) { ... }`) 바로 **다음에 `else if` 블록을 추가**해서 새로운 치트 코드를 감지하도록 해줘.
+#    - 새로운 정규표현식: `const setScoreCheatMatch = userMessage.match(/^\/setscore\s+([1-9]|10)$/);` (1~10 사이 숫자만 매칭)
+#    - `console.log("Frontend: SetScore cheat match result:", setScoreCheatMatch);` 로그 추가.
+
+# b. `else if (setScoreCheatMatch)` 블록 (새로운 치트 코드일 경우) 안의 로직:
+#    i.  `console.log("Frontend: SET_SCORE CHEAT detected. Processing...");` 로그 추가.
+#    ii. 채팅 입력창(`userInput`)의 내용을 비워줘.
+#    iii. 정규표현식에서 목표 점수(`targetScore`)를 추출하고 정수형으로 변환해줘 (`parseInt(setScoreCheatMatch[1], 10)`).
+#    iv. (선택적이지만 권장) 추출된 `targetScore`가 실제로 1~10 사이인지 한 번 더 확인하고, 아니라면 사용자에게 채팅창으로 오류 메시지를 보여주고 처리를 중단할 수 있어. (이 부분은 AI가 판단해서 추가해도 좋음)
+#    v.  백엔드의 `/send_message` 경로로 **POST 요청**을 보내되, 요청 본문(body)에는 다음과 같은 **새로운 JSON 객체**를 포함시켜줘:
+#        ```json
+#        {
+#            "cheat_command": "set_score",
+#            "target_score": 추출한_목표_점수
+#        }
+#        ```
+#    vi. 백엔드로부터 응답(data)이 오면, 다음 작업을 수행해줘:
+#        - `console.log("Frontend: Received response for SET_SCORE command:", data);` 로그 추가.
+#        - 만약 응답 데이터(`data`)에 `reply`가 있다면, 해당 내용을 시스템 안내 메시지 형태로 채팅창(`chat-box`)에 추가해줘.
+#        - 응답 데이터에 `current_turn`과 `max_turns`가 있다면, `turn-indicator`를 업데이트해줘.
+#        - 응답 데이터에 `stress_score`가 있다면, `score-display`의 내용을 **백엔드가 보내준 `stress_score`(즉, 치트 코드로 설정된 점수)로 업데이트**해줘.
+#        - 만약 `data.conversation_end`가 `true`이면 화면 전환 로직을 실행하고, 그렇지 않으면 입력창과 버튼을 활성화 상태로 유지해줘.
+
+# c. 기존의 `/setturn N` 치트 코드 처리 블록과 일반 메시지 처리 `else` 블록은 그대로 유지되어야 해.
+#    (즉, `if (setturnMatch) { ... } else if (setScoreMatch) { ... } else { ... 일반 메시지 ... }` 와 같은 구조가 될 거야.)
+
+# === 2. 백엔드 코드 수정 (`main.py` 또는 `app.py`의 `handle_message` 함수) ===
+
+# `/send_message` 라우트의 `handle_message` 함수 내부, 기존 `/setturn N` 치트 코드 처리 블록 바로 다음에 새로운 `elif` 블록을 추가해서 `/setscore S` 치트 코드를 처리하도록 해줘:
+
+# a. `elif data.get('cheat_command') == "set_score":` 조건으로 분기를 만들어줘.
+#    i.  `print(f"DEBUG: Backend: SET_SCORE command processing branch ENTERED. Data: {data}")` 로그 추가.
+#    ii. `target_score_value = data.get('target_score')`로 목표 점수를 가져와줘.
+#    iii.만약 `target_score_value`가 `None`이 아니면:
+#        - `target_score`를 정수형으로 변환하고, 1~10 범위를 벗어나면 오류로 처리하거나 범위 내로 조정해줘. (예: `target_score = max(1, min(10, int(target_score_value)))`)
+#        - **턴 카운트는 정상적으로 1 증가**시켜줘 (세션에서 가져오고, +1 하고, 다시 세션에 저장). 이 치트 코드는 턴을 소모하는 상호작용으로 간주.
+#        - `user_messages`나 `chat_history`는 이 치트 코드에 의해 초기화되지 **않아야 해.** (기존 대화는 유지)
+#        - 프론트엔드에 반환할 JSON 응답을 구성해줘. 이 응답에는 다음을 포함해야 해:
+#            - `reply`: "스트레스 점수가 임의로 {target_score}점으로 설정되었습니다 (이번 턴에만 유효)." 같은 안내 메시지.
+#            - `stress_score`: **클라이언트가 요청한 `target_score` 값.** (실제 `calculate_stress_score`를 호출하지 않음)
+#            - `conversation_end`: `(증가된_턴_카운트 >= 20)` 와 같이 계산된 값.
+#            - `current_turn`: 증가된_턴_카운트 값.
+#            - `max_turns`: 20 (또는 설정된 최대 턴 수).
+#        - 이 JSON 응답을 `jsonify`로 반환하고 함수를 종료해줘.
+#    iv. 만약 `target_score_value`가 `None`이면, 적절한 오류 응답을 반환해줘.
+
+# b. 기존의 `/setturn N` 처리 로직과 일반 메시지 처리 `else` 블록은 그대로 유지되어야 해.
+#    (즉, `if (command == 'set_turn') { ... } elif (command == 'set_score') { ... } else { ... 일반 메시지 ... }` 구조)
+
+# **핵심:**
+# - 이 `/setscore` 치트 코드는 AI 호출이나 실제 점수 계산 로직(`calculate_stress_score`)을 실행하지 않고, 단순히 해당 턴의 `stress_score` 값을 사용자가 지정한 값으로 화면에 보여주기 위한 것임. (다음 일반 메시지부터는 다시 정상적으로 점수가 계산됨)
+# - 턴 카운트는 이 치트 코드 사용 시에도 정상적으로 증가해야 함.
