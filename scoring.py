@@ -111,73 +111,105 @@ KEYWORDS = {
 }
 
 def calculate_stress_score(user_messages):
-    """
-    Calculate stress score based on keywords found in user messages.
-    Includes diminishing returns for repeated keywords.
-    
-    Args:
-        user_messages (list): List of strings containing user messages
-        
-    Returns:
-        float: Final stress score (1.0-10.0 scale with one decimal place)
-    """
     if not user_messages:
         print("[Scoring] No user messages provided.")
-        return 5.0
-    
-    raw_score = 0.0
+        default_category_scores = {category_name: 0.0 for category_name in KEYWORDS.keys()}
+        return {
+            "overall_score": 5.0,
+            "category_scores": default_category_scores,
+            "raw_category_details": {
+                category_name: {"score": 0.0, "keywords_found": []} for category_name in KEYWORDS.keys()
+            }
+        }
+
     keyword_occurrence_count = {}
-    
-    print(f"\n--- [Scoring] Start analyzing {len(user_messages)} messages for diminishing returns ---")
+    print(f"\n--- [Scoring] Start analyzing {len(user_messages)} messages for keyword counts ---")
     for i, message in enumerate(user_messages):
-        print(f"[Scoring] Analyzing msg {i+1} for keyword counts: '{message[:50]}...'")
-        for category_keywords in KEYWORDS.values():
-            for keyword in category_keywords.keys():
+        print(f"[Scoring] Analyzing msg {i+1}: '{message[:50]}...'")
+        for category_name, keywords_with_weights in KEYWORDS.items():
+            for keyword in keywords_with_weights:
                 if keyword in message:
                     keyword_occurrence_count[keyword] = keyword_occurrence_count.get(keyword, 0) + message.count(keyword)
 
-    print(f"[Scoring] Keyword Occurrences in full history: {keyword_occurrence_count}")
+    print(f"[Scoring] Keyword Occurrences: {keyword_occurrence_count}")
 
-    for keyword, count in keyword_occurrence_count.items():
-        base_weight = 0.0
-        for category_name, category_data in KEYWORDS.items():
-            if keyword in category_data:
-                base_weight = float(category_data[keyword])
-                break
-        
-        if base_weight == 0.0:
-            continue
+    raw_category_scores = {category_name: 0.0 for category_name in KEYWORDS.keys()}
+    raw_category_details = {
+        category_name: {"score": 0.0, "keywords_found": []} for category_name in KEYWORDS.keys()
+    }
 
-        current_keyword_total_score = 0.0
-        diminishing_factor = 1.0
-        for i in range(count):
-            current_keyword_total_score += base_weight * diminishing_factor
-            diminishing_factor *= 0.6
-        
-        raw_score += current_keyword_total_score
-        print(f"  - Keyword '{keyword}': count={count}, base_w={base_weight}, score_after_diminishing={current_keyword_total_score:.2f}")
+    print("\n--- [Scoring] Calculating category scores with diminishing returns ---")
+    for category_name, keywords_with_weights in KEYWORDS.items():
+        category_score = 0.0
+        keywords_found = []
 
-    print(f"[Scoring] Total Raw Score (with diminishing returns): {raw_score:.2f}")
+        for keyword, base_weight in keywords_with_weights.items():
+            count = keyword_occurrence_count.get(keyword, 0)
+            if count == 0:
+                continue
 
-    normalized_score_float = raw_score + 5.0
-    final_score_float = max(1.0, min(10.0, normalized_score_float))
-    final_score_rounded = round(final_score_float, 1)
-    
-    print(f"[Scoring] Normalized Score (1.0-10.0): {final_score_rounded}\n----------------------------")
-    
-    return final_score_rounded
+            keyword_score = 0.0
+            diminishing_factor = 1.0
+            for _ in range(count):
+                keyword_score += base_weight * diminishing_factor
+                diminishing_factor *= 0.6
+
+            if count > 0:
+                keywords_found.append({
+                    "keyword": keyword,
+                    "count": count,
+                    "contribution": round(keyword_score, 2)
+                })
+            category_score += keyword_score
+            print(f"  - Category '{category_name}', Keyword '{keyword}': {count} occurrences, score: {keyword_score:.2f}")
+
+        raw_category_scores[category_name] = category_score
+        raw_category_details[category_name]["score"] = round(category_score, 2)
+        raw_category_details[category_name]["keywords_found"] = keywords_found
+
+    print(f"\n[Scoring] Raw Category Scores: {raw_category_scores}")
+
+    # Calculate overall score
+    overall_raw_score = sum(raw_category_scores.values())
+    normalized_score = overall_raw_score + 5.0
+    final_score = round(max(1.0, min(10.0, normalized_score)), 1)
+
+    # Normalize category scores to 0-5 scale
+    normalized_category_scores = {}
+    for category_name, raw_score in raw_category_scores.items():
+        if category_name == "positive_emotion":
+            # 긍정 감정은 반대로 계산 (높을수록 스트레스 낮음)
+            norm_score = round(max(0.0, min(5.0, 2.5 - (raw_score / 6.0) * 2.5)), 1)
+        else:
+            # 부정적 카테고리는 높을수록 스트레스 높음
+            norm_score = round(max(0.0, min(5.0, (raw_score / 10.0) * 5.0)), 1)
+        normalized_category_scores[category_name] = norm_score
+
+    print(f"[Scoring] Final Overall Score: {final_score}")
+    print(f"[Scoring] Normalized Category Scores: {normalized_category_scores}")
+
+    return {
+        "overall_score": final_score,
+        "category_scores": normalized_category_scores,
+        "raw_category_details": raw_category_details
+    }
 
 if __name__ == '__main__':
-    print("Running scoring module self-test...")
+    test_messages = [
+        "오늘은 너무 피곤하고 머리가 아파요. 일이 너무 많아서 스트레스 받아요.",
+        "시험기간이라 불안하고 잠도 못자고 있어요.",
+        "친구들과 즐겁게 놀았고 성과도 좋았어요!"
+    ]
     
-    test_messages_1 = ["오늘 너무 피곤하고 머리가 아파요", "일이 너무 많아서 스트레스 받아요"]
-    test_messages_2 = ["잘 지내고 있어요", "오늘은 정말 행복한 하루였어요!"]
-    test_messages_3 = ["시험기간이라 불안하고 잠도 못자고 있어요"]
-    
-    score1 = calculate_stress_score(test_messages_1)
-    score2 = calculate_stress_score(test_messages_2)
-    score3 = calculate_stress_score(test_messages_3)
-    
-    print(f"Test Case 1 Score: {score1}")
-    print(f"Test Case 2 Score: {score2}")
-    print(f"Test Case 3 Score: {score3}")
+    result = calculate_stress_score(test_messages)
+    print("\nTest Results:")
+    print(f"Overall Score: {result['overall_score']}")
+    print("\nCategory Scores:")
+    for category, score in result['category_scores'].items():
+        print(f"{category}: {score}")
+    print("\nDetailed Analysis:")
+    for category, details in result['raw_category_details'].items():
+        if details['keywords_found']:
+            print(f"\n{category}:")
+            print(f"Score: {details['score']}")
+            print("Keywords found:", details['keywords_found'])
