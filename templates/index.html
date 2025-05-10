@@ -3,14 +3,40 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>스트레스 평가 대화</title>
+    <title>AI 대화형 스트레스 자가 성찰 도우미</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div id="app-container">
-        <h1>스트레스 평가 대화</h1>
-        <div id="chat-section">
+        <div id="welcome-section">
+            <h1>AI 대화형 스트레스 자가 성찰 도우미</h1>
+            
+            <section>
+                <h2>프로그램의 목적</h2>
+                <p>본 프로그램은 사용자가 AI 챗봇과의 편안한 대화를 통해 최근 자신의 스트레스 수준을 스스로 돌아보고 성찰할 수 있도록 돕기 위해 개발되었습니다.</p>
+                <p>약 20턴의 짧은 대화를 통해 현재 느끼는 감정, 일상에서의 경험, 신체적 반응 등을 탐색합니다.</p>
+                <p class="warning"><strong>주의:</strong> 이 프로그램은 재미 또는 참고용이며, 의학적 진단이나 전문적인 심리 상담을 대체할 수 없습니다. 심각한 스트레스나 정신 건강 문제가 의심될 경우 반드시 전문가와 상담하세요.</p>
+            </section>
+
+            <section>
+                <h2>스트레스 측정 방법</h2>
+                <p>챗봇과의 대화에서 사용자가 사용하는 단어와 표현을 분석하여 스트레스 수준을 추정합니다.</p>
+                <p>시스템은 다양한 스트레스 관련 카테고리(예: 정서적 어려움, 업무/학업 부담, 대인 관계, 신체 증상 등)에 해당하는 키워드들의 출현 빈도와 미리 정의된 가중치를 종합적으로 고려합니다.</p>
+                <p>대화가 종료되면, 분석된 내용을 바탕으로 1.0점에서 10.0점 사이의 종합적인 스트레스 추정 점수를 제공합니다.</p>
+            </section>
+
+            <section>
+                <h2>측정 방법의 과학적 근거</h2>
+                <p>본 측정 방식은 '사람의 언어 사용이 심리 상태를 반영한다'는 심리언어학 및 내용 분석 연구 원리에 기반합니다.</p>
+                <p>특히, 심리학 연구에서 널리 사용되는 LIWC(Linguistic Inquiry and Word Count)와 같이, 텍스트 내 특정 단어 카테고리의 빈도를 통해 심리 상태를 추론하는 전문적인 방법론의 핵심 아이디어를 참고하여, 본 프로젝트의 목적에 맞게 단순화하고 응용하였습니다.</p>
+            </section>
+
+            <button id="start-chat-button">채팅 시작하기</button>
+        </div>
+
+        <div id="chat-section" style="display: none;">
+            <h1>스트레스 평가 대화</h1>
             <div id="chat-box"></div>
             <div id="input-area">
                 <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
@@ -33,6 +59,7 @@
     </div>
     
     <script>
+        const welcomeSection = document.getElementById('welcome-section');
         const chatSection = document.getElementById('chat-section');
         const resultsSection = document.getElementById('results-section');
         const chatBox = document.getElementById('chat-box');
@@ -41,7 +68,18 @@
         const turnIndicator = document.getElementById('turn-indicator');
         const scoreDisplay = document.getElementById('score-display');
         const finalScoreValueElement = document.getElementById('final-score-value');
+        const startChatButton = document.getElementById('start-chat-button');
         const tryAgainButton = document.getElementById('try-again-button');
+
+        startChatButton.addEventListener('click', () => {
+            welcomeSection.style.display = 'none';
+            chatSection.style.display = 'block';
+            userInput.focus();
+        });
+
+        tryAgainButton.addEventListener('click', () => {
+            window.location.href = '/';
+        });
 
         async function sendMessage() {
             const userMessage = userInput.value.trim();
@@ -49,14 +87,10 @@
                 return;
             }
 
-            console.log("Frontend: User input received:", userMessage);
+            userInput.value = "";
 
             const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
             const setScoreCheatMatch = userMessage.match(/^\/setscore\s+([1-9]|10)$/);
-            console.log("Frontend: Cheat code match result:", cheatCodeMatch);
-            console.log("Frontend: SetScore cheat match result:", setScoreCheatMatch);
-
-            userInput.value = "";
 
             if (cheatCodeMatch) {
                 console.log("Frontend: CHEAT CODE detected. Processing for cheat path...");
@@ -212,6 +246,7 @@
                     }
                     const data = await response.json();
                     console.log("Frontend: Received response for NORMAL command from backend:", data);
+                    console.log("DEBUG: Backend Response Data Received:", JSON.stringify(data, null, 2));
 
                     if (data.reply) {
                         const container = document.createElement('div');
@@ -232,9 +267,6 @@
                     }
 
                     if (data.conversation_end === true) {
-                        console.log("Frontend: FINAL - Received data on conversation end:", data);
-                        console.log("Frontend: FINAL - Stress score from backend:", data.stress_score);
-                        console.log("Frontend: NORMAL conversation ended. Switching to results screen.");
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
                         finalScoreValueElement.textContent = data.stress_score + "점";
@@ -262,9 +294,6 @@
             if (event.key === 'Enter') {
                 sendMessage();
             }
-        });
-        tryAgainButton.addEventListener('click', () => {
-            window.location.reload();
         });
     </script>
 </body>
