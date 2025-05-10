@@ -4,37 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <title>스트레스 평가 대화</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        #chat-section, #results-section { padding: 20px; }
-        #chat-box { height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
-        #user-input { width: 80%; padding: 8px; margin-right: 10px; }
-        #send-button { padding: 8px 15px; }
-        #score-display { margin-top: 20px; font-weight: bold; }
-        #results-section { text-align: center; }
-        #final-score-value { font-size: 3em; font-weight: bold; color: #2c3e50; margin: 30px 0; }
-        #try-again-button { padding: 10px 20px; font-size: 1.2em; background-color: #3498db; color: white; border: none; cursor: pointer; border-radius: 5px; }
-        #try-again-button:hover { background-color: #2980b9; }
-        .disclaimer { color: #7f8c8d; font-style: italic; margin-top: 20px; }
-    </style>
 </head>
 <body>
-    <div id="chat-section">
-        <div id="chat-box"></div>
-        <div>
-            <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
-            <button id="send-button">전송</button>
+    <div id="app-container">
+        <h1>스트레스 평가 대화</h1>
+        <div id="chat-section">
+            <div id="chat-box"></div>
+            <div>
+                <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
+                <button id="send-button">전송</button>
+            </div>
+            <div id="turn-indicator" style="margin-bottom: 5px; font-size: 0.9em; color: grey;">대화 시작 중...</div>
+            <div id="score-display"></div>
         </div>
-        <div id="turn-indicator" style="margin-bottom: 5px; font-size: 0.9em; color: grey;">대화 시작 중...</div>
-        <div id="score-display"></div>
-    </div>
 
-    <div id="results-section" style="display: none;">
-        <h2>최종 스트레스 평가 결과</h2>
-        <p id="final-score-value"></p>
-        <p class="disclaimer">본 점수는 참고용이며 의학적 진단을 대체할 수 없습니다.<br>전문적인 상담이 필요하시다면 전문가와 상담하시기 바랍니다.</p>
-        <button id="try-again-button">처음부터 다시 시작하기</button>
+        <div id="results-section" style="display: none;">
+            <h2>최종 스트레스 평가 결과</h2>
+            <p id="final-score-value"></p>
+            <p class="disclaimer">본 점수는 참고용이며 의학적 진단을 대체할 수 없습니다.<br>전문적인 상담이 필요하시다면 전문가와 상담하시기 바랍니다.</p>
+            <button id="try-again-button">처음부터 다시 시작하기</button>
+        </div>
     </div>
     
     <script>
@@ -61,7 +52,6 @@
             console.log("Frontend: Cheat code match result:", cheatCodeMatch);
             console.log("Frontend: SetScore cheat match result:", setScoreCheatMatch);
 
-            // Clear input immediately
             userInput.value = "";
 
             if (cheatCodeMatch) {
@@ -263,7 +253,6 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // 이벤트 리스너 설정
         sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
