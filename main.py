@@ -115,6 +115,10 @@ def handle_message():
     print(f"DEBUG: conversation_end flag: {conversation_end}")
     if conversation_end:
         print("[Turn Counter] Conversation turn limit (20 turns) reached.")
+        # 최종 턴에서 누적된 전체 메시지로 스트레스 점수 재계산
+        user_messages_for_scoring = session.get('user_messages', [])
+        stress_score = calculate_stress_score(user_messages_for_scoring)
+        print(f"DEBUG: Backend FINAL TURN DATA: turn_count={turn_count}, conversation_end={conversation_end}, final_stress_score_to_send={stress_score}, user_messages_history_len={len(user_messages_for_scoring)}")
     
     user_message = request.json.get('message')
     print(f"DEBUG: Received message: {user_message}")

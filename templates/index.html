@@ -238,6 +238,8 @@
                     }
 
                     if (data.conversation_end === true) {
+                        console.log("Frontend: FINAL - Received data on conversation end:", data);
+                        console.log("Frontend: FINAL - Stress score from backend:", data.stress_score);
                         console.log("Frontend: NORMAL conversation ended. Switching to results screen.");
                         chatSection.style.display = 'none';
                         resultsSection.style.display = 'block';
