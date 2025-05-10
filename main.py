@@ -8,7 +8,8 @@ app.secret_key = 'your-secret-key-here'  # 실제 운영 환경에서는 안전�
 
 # 대화 종료 조건 관련 상수
 MAX_SCORE_CHANGES = 10
-MAX_CONVERSATION_TURNS = 25
+ABSOLUTE_MAX_TURNS = 20
+MAX_CONVERSATION_TURNS = ABSOLUTE_MAX_TURNS
 
 # OpenAI 클라이언트 초기화
 openai_api_key = os.environ.get("OPENAI_API_KEY")
@@ -119,12 +120,13 @@ def handle_message():
     MAX_TOTAL_TURNS = MAX_CONVERSATION_TURNS
     MAX_TOTAL_SCORE_CHANGES = MAX_SCORE_CHANGES
     score_change_total_count = score_change_count
+    print(f"DEBUG: Backend sending max_turns: {ABSOLUTE_MAX_TURNS}")
     response_data = {
         'reply': bot_reply,
         'stress_score': current_overall_score,
         'conversation_end': conversation_end,
         'current_turn': turn_count,
-        'max_turns': MAX_TOTAL_TURNS,
+        'max_turns': ABSOLUTE_MAX_TURNS,
         'score_changes_count': score_change_total_count,
         'max_score_changes_limit': MAX_TOTAL_SCORE_CHANGES
     }

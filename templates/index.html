@@ -301,6 +301,7 @@
                     }
 
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
+                        console.log("Frontend: Received max_turns from backend:", data.max_turns);
                         let turnText = `진행: ${data.current_turn} / ${data.max_turns} 턴`;
                         if (data.score_changes_count !== undefined && data.max_score_changes_limit !== undefined) {
                             turnText += ` (점수 변경: ${data.score_changes_count} / ${data.max_score_changes_limit}회)`;
