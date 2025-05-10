@@ -15,7 +15,7 @@
                 <h2>프로그램의 목적</h2>
                 <p>본 프로그램은 사용자가 AI 챗봇과의 편안한 대화를 통해 최근 자신의 스트레스 수준을 스스로 돌아보고 성찰할 수 있도록 돕기 위해 개발되었습니다.</p>
                 <p>약 20턴의 짧은 대화를 통해 현재 느끼는 감정, 일상에서의 경험, 신체적 반응 등을 탐색합니다.</p>
-                
+
             </section>
 
             <section>
@@ -288,7 +288,7 @@
                     }
 
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {
-                        turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴`;
+                        turnIndicator.textContent = `현재 진행: ${data.current_turn} / ${data.max_turns} 턴 | 점수 변동: ${data.score_changes || 0} / ${data.max_score_changes || 10} 회`;
                     }
 
                     // Only show score in final results, not during conversation
