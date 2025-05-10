@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>스트레스 평가 대화</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
         #chat-section, #results-section { padding: 20px; }
@@ -58,9 +59,11 @@
             const cheatCodeMatch = userMessage.match(/^\/setturn\s+(\d+)$/);
             console.log("Frontend: Cheat code match result:", cheatCodeMatch);
 
+            // Clear input immediately
+            userInput.value = "";
+
             if (cheatCodeMatch) {
                 console.log("Frontend: CHEAT CODE detected. Processing for cheat path...");
-                userInput.value = "";
 
                 const targetTurn = parseInt(cheatCodeMatch[1], 10);
                 const payload = {
@@ -124,12 +127,14 @@
             } else {
                 console.log("Frontend: NORMAL message detected. Sending:", userMessage);
 
-                const userP = document.createElement('p');
-                userP.textContent = `나: ${userMessage}`;
-                chatBox.appendChild(userP);
+                const container = document.createElement('div');
+                container.classList.add('message-container', 'user-message-container');
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('user-message');
+                messageElement.textContent = userMessage;
+                container.appendChild(messageElement);
+                chatBox.appendChild(container);
                 chatBox.scrollTop = chatBox.scrollHeight;
-
-                userInput.value = "";
 
                 try {
                     const response = await fetch('/send_message', {
@@ -147,9 +152,13 @@
                     console.log("Frontend: Received response for NORMAL command from backend:", data);
 
                     if (data.reply) {
-                        const botP = document.createElement('p');
-                        botP.textContent = `챗봇: ${data.reply}`;
-                        chatBox.appendChild(botP);
+                        const container = document.createElement('div');
+                        container.classList.add('message-container', 'bot-message-container');
+                        const messageElement = document.createElement('div');
+                        messageElement.classList.add('bot-message');
+                        messageElement.textContent = data.reply;
+                        container.appendChild(messageElement);
+                        chatBox.appendChild(container);
                     }
 
                     if (turnIndicator && data.current_turn !== undefined && data.max_turns !== undefined) {

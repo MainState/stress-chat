@@ -1,0 +1,33 @@
+
+/* 채팅 메시지 스타일 */
+.message-container {
+    display: flex;
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+.message-container.user-message-container {
+    justify-content: flex-end;
+}
+
+.message-container.bot-message-container {
+    justify-content: flex-start;
+}
+
+.user-message {
+    background-color: #e1f5fe;
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 70%;
+    word-wrap: break-word;
+    margin-left: auto;
+}
+
+.bot-message {
+    background-color: #f0f0f0;
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 70%;
+    word-wrap: break-word;
+    margin-right: auto;
+}
